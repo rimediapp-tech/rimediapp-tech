@@ -509,43 +509,52 @@
             </div>
 
             <!-- TAB 3: FACEBOOK REELS -->
-            <div id="tab-facebook" class="tab-content">
+            <div id="tab-facebook" class="tab-content" style="width: 100%; height: 100%;">
+    <iframe src="https://m.facebook.com/reels" 
+            style="width: 100%; height: 100%; border: none; background: #050511;"></iframe>
+</div>
                 <div class="webview-container">
                     <div class="webview-card">
                         <i class="fa-brands fa-facebook" style="color: var(--accent-fb);"></i>
                         <h2>Facebook Reels</h2>
                         <p>Akses fitur Reels langsung di tab eksternal. Jika Anda sudah masuk ke akun Facebook di browser (Chrome/Safari), video akan langsung berputar.</p>
-                        <button class="nexus-btn" style="background: var(--accent-fb); font-size: 18px;" onclick="window.open('https://www.facebook.com/reels', '_blank')">
-                            Buka Reels Sekarang
-                        </button>
+                       <button class="nexus-btn" style="background: var(--accent-fb); font-size: 18px;" onclick="window.open('https://m.facebook.com/reels', '_self')">
+    Buka Reels Sekarang
+</button>
                     </div>
                 </div>
             </div>
 
             <!-- TAB 4: MARKETPLACE -->
-            <div id="tab-marketplace" class="tab-content">
+         <div id="tab-marketplace" class="tab-content" style="width: 100%; height: 100%;">
+    <iframe src="https://m.facebook.com/marketplace" 
+            style="width: 100%; height: 100%; border: none; background: #050511;"></iframe>
+</div>
                 <div class="webview-container">
                     <div class="webview-card">
                         <i class="fa-solid fa-store" style="color: var(--accent-tertiary);"></i>
                         <h2>FB Marketplace</h2>
                         <p>Kelola dagangan dan tanggapi calon pembeli. Buka ekosistem jual-beli secara instan di jendela aman.</p>
-                        <button class="nexus-btn" style="background: var(--accent-tertiary); font-size: 18px;" onclick="window.open('https://www.facebook.com/marketplace', '_blank')">
-                            Akses Marketplace
-                        </button>
+                       <button class="nexus-btn" style="background: var(--accent-tertiary); font-size: 18px;" onclick="window.open('https://m.facebook.com/marketplace', '_self')">
+    Akses Marketplace
+</button>
                     </div>
                 </div>
             </div>
 
             <!-- TAB 5: TIKTOK -->
-            <div id="tab-tiktok" class="tab-content">
+          <div id="tab-tiktok" class="tab-content" style="width: 100%; height: 100%;">
+    <iframe src="https://www.tiktok.com/embed" 
+            style="width: 100%; height: 100%; border: none; background: #050511;"></iframe>
+</div>
                 <div class="webview-container">
                     <div class="webview-card">
                         <i class="fa-brands fa-tiktok" style="color: #fff;"></i>
                         <h2>TikTok Ekosistem</h2>
                         <p>Pantau tren pemasaran dan interaksi pelanggan melalui FYP. Tautan akan terbuka mengandalkan sesi TikTok di browser Anda.</p>
-                        <button class="nexus-btn" style="background: #222; border: 1px solid #444; font-size: 18px;" onclick="window.open('https://www.tiktok.com', '_blank')">
-                            Buka TikTok
-                        </button>
+                       <button class="nexus-btn" style="background: #222; border: 1px solid #444; font-size: 18px;" onclick="window.open('https://m.tiktok.com', '_self')">
+    Buka TikTok
+</button>
                     </div>
                 </div>
             </div>
@@ -883,7 +892,37 @@
                 });
                 this.renderContacts('');
             }
+async translateText(btnElement, text) {
+    const bubble = btnElement.closest('.msg-bubble');
+    let transBox = bubble.querySelector('.translated-text');
+    
+    // Jika sudah pernah diterjemahkan, toggle tampilkan/sembunyikan
+    if (transBox) {
+        transBox.style.display = transBox.style.display === 'none' ? 'block' : 'none';
+        return;
+    }
 
+    btnElement.innerText = 'Menerjemahkan...';
+
+    try {
+        // Menggunakan API Gratis MyMemory Translate (Tanpa API Key)
+        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=autodetect|id`);
+        const data = await res.json();
+        const translatedText = data.responseData.translatedText;
+
+        // Tampilkan hasil terjemahan di bawah teks asli
+        const resultHTML = `
+            <div class="translated-text" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2); font-style: italic; color: var(--accent-tertiary); font-size: 13px;">
+                <i class="fa-solid fa-language"></i> ${translatedText}
+            </div>
+        `;
+        bubble.insertAdjacentHTML('beforeend', resultHTML);
+        btnElement.innerText = 'Terjemahkan';
+    } catch (err) {
+        console.error(err);
+        btnElement.innerText = 'Gagal terjemah';
+    }
+}
             async addNewContact() {
                 const email = document.getElementById('new-contact-email').value.trim();
                 if (!email) return;
@@ -969,13 +1008,69 @@
                 });
             }
 
+          // Fungsi baru untuk LibreTranslate
+            async translateText(btnElement, text) {
+                const bubble = btnElement.closest('.msg-bubble');
+                let transBox = bubble.querySelector('.translated-text');
+                
+                // Toggle jika teks terjemahan sudah ada (tampil/sembunyi)
+                if (transBox) {
+                    transBox.style.display = transBox.style.display === 'none' ? 'block' : 'none';
+                    return;
+                }
+
+                btnElement.innerText = 'Menerjemahkan...';
+
+                try {
+                    // Panggilan POST API LibreTranslate
+                    const res = await fetch('https://translate.argosopentech.com/translate', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            q: text,
+                            source: 'auto',
+                            target: 'id',
+                            format: 'text'
+                        }),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const data = await res.json();
+                    const translatedText = data.translatedText;
+
+                    if (!translatedText) throw new Error('Terjemahan kosong');
+
+                    // Tampilkan teks hasil terjemahan di dalam bubble pesan
+                    const resultHTML = `
+                        <div class="translated-text" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.2); font-style: italic; color: var(--accent-tertiary); font-size: 13px;">
+                            <i class="fa-solid fa-language"></i> ${translatedText}
+                        </div>
+                    `;
+                    bubble.insertAdjacentHTML('beforeend', resultHTML);
+                    btnElement.innerText = 'Terjemahkan';
+                } catch (err) {
+                    console.error('LibreTranslate Error:', err);
+                    btnElement.innerText = 'Gagal terjemah';
+                }
+            }
+
+            // Fungsi UI yang sudah dimodifikasi dengan tombol Terjemahkan
             appendMessageUI(type, text, time) {
                 const container = document.getElementById('message-container');
+                
+                // Sanitasi teks agar aman dimasukkan ke event handler onclick
+                const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
+                // Tombol translate hanya muncul untuk pesan masuk ('received')
+                const translateBtn = type === 'received' 
+                    ? `<button onclick="app.chat.translateText(this, '${safeText}')" style="background:none; border:none; color:var(--text-muted); font-size:10px; cursor:pointer; text-decoration:underline; margin-right:8px;">Terjemahkan</button>` 
+                    : '';
+
                 const html = `
                     <div class="msg-wrapper ${type}">
                         <div class="msg-bubble">
                             ${text}
                             <div class="msg-meta">
+                                ${translateBtn}
                                 <span>${time}</span>
                                 ${type === 'sent' ? '<i class="fa-solid fa-check-double" style="color: var(--accent-tertiary);"></i>' : ''}
                             </div>
