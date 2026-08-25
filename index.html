@@ -760,9 +760,15 @@
 
                 try {
                     if (this.mode === 'register') {
-                        const { data, error } = await this.parent.supabase.auth.signUp({
-                            email: email, password: pass, options: { data: { full_name: name } }
-                        });
+    const { data, error } = await this.parent.supabase.auth.signUp({
+        email: email, 
+        password: pass, 
+        options: { 
+            data: { full_name: name },
+            emailRedirectTo: 'https://rimediapp-tech.github.io/rimediapp-tech/'
+        }
+    });
+
                         if (error) throw error;
                         
                         if (data.session) {
