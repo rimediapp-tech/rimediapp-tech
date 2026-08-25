@@ -17,7 +17,7 @@
     <title>Rimedia Enterprise</title>
     
     <!-- Google Fonts & FontAwesome -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link id="app-font" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Supabase SDK -->
@@ -39,6 +39,8 @@
             --accent-tertiary: #06b6d4;
             --accent-wa: #25D366;
             --accent-fb: #1877F2;
+            --accent-ig: #E1306C;
+            --accent-tw: #1DA1F2;
             
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
@@ -55,8 +57,7 @@
             
             --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             --transition-fast: all 0.2s ease-in-out;
-            --app-font: 'Plus Jakarta Sans', sans-serif;
-            --app-wallpaper: none;
+            --font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
         /* ==========================================================================
@@ -66,13 +67,13 @@
             margin: 0; 
             padding: 0; 
             box-sizing: border-box; 
-            font-family: var(--app-font); 
+            font-family: var(--font-family); 
             -webkit-tap-highlight-color: transparent; 
         }
         
         body { 
             background-color: var(--bg-deep); 
-            background-image: var(--app-wallpaper);
+            background-image: var(--bg-image, none);
             background-size: cover;
             background-position: center;
             color: var(--text-main); 
@@ -80,13 +81,18 @@
             overflow: hidden; 
             display: flex; 
             position: relative; 
-            transition: background-color 0.5s ease, background-image 0.5s ease;
+            transition: background 0.5s ease;
+        }
+
+        /* Overlay transparan jika ada background image */
+        .app-overlay {
+            position: absolute; inset: 0; background: var(--bg-deep); opacity: var(--bg-opacity, 1); z-index: 0; pointer-events: none; transition: opacity 0.5s ease;
         }
 
         /* Background Aurora Animation */
         .aurora-bg { 
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
-            overflow: hidden; z-index: 0; pointer-events: none; 
+            overflow: hidden; z-index: 1; pointer-events: none; opacity: var(--aurora-opacity, 1);
         }
         .aurora-blob { 
             position: absolute; filter: blur(90px); opacity: 0.4; border-radius: 50%; 
@@ -102,11 +108,13 @@
             100% { transform: translate(3vw, 3vh) scale(1.1) rotate(10deg); } 
         }
 
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
 
+        /* Generic Utilities */
         .glass { background: var(--bg-panel); backdrop-filter: var(--blur-heavy); border: 1px solid var(--glass-border); box-shadow: var(--shadow-glass); }
         .hidden { opacity: 0; pointer-events: none; transform: scale(1.02); display: none !important; }
 
@@ -118,7 +126,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ==========================================================================
-           3. AUTHENTICATION
+           3. AUTHENTICATION & FORMS
            ========================================================================== */
         #auth-view { 
             position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; 
@@ -126,7 +134,11 @@
             transition: var(--transition-smooth); 
         }
         
-        .auth-container { width: 100%; max-width: 400px; padding: 40px; border-radius: 24px; text-align: center; position: relative; }
+        .auth-container { 
+            width: 100%; max-width: 400px; padding: 40px; border-radius: 24px; 
+            text-align: center; position: relative; 
+        }
+
         .auth-logo-img { width: 70px; height: 70px; border-radius: 18px; margin-bottom: 20px; box-shadow: var(--shadow-glow); }
         .auth-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
         .auth-subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 30px; }
@@ -137,26 +149,28 @@
 
         .input-group { position: relative; margin-bottom: 20px; text-align: left; }
         .input-group i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted); transition: var(--transition-fast); }
-        .nexus-input { 
+        .nexus-input, .nexus-textarea, .nexus-select { 
             width: 100%; padding: 14px 16px 14px 45px; background: rgba(0,0,0,0.5); 
             border: 1px solid var(--glass-border); border-radius: 12px; color: white; 
             font-size: 14px; outline: none; transition: var(--transition-fast); 
         }
-        .nexus-input:focus { border-color: var(--accent-primary); background: rgba(0,0,0,0.7); }
+        .nexus-textarea { padding-left: 16px; min-height: 80px; resize: none; }
+        .nexus-select { padding-left: 16px; appearance: none; }
+        .nexus-input:focus, .nexus-textarea:focus, .nexus-select:focus { border-color: var(--accent-primary); background: rgba(0,0,0,0.7); }
         .nexus-input:focus + i { color: var(--accent-primary); }
 
         .nexus-btn { 
             width: 100%; padding: 14px; border: none; border-radius: 12px; 
             background: var(--accent-primary); color: white; font-weight: 600; font-size: 15px; 
-            cursor: pointer; transition: var(--transition-fast); 
+            cursor: pointer; transition: var(--transition-fast); display: flex; justify-content: center; align-items: center; gap: 10px;
         }
         .nexus-btn:hover { background: #4f46e5; box-shadow: var(--shadow-glow); transform: translateY(-1px); }
-        .nexus-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .nexus-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 
         .auth-error { color: var(--danger); font-size: 13px; margin-top: 15px; min-height: 20px; }
 
         /* ==========================================================================
-           4. MODALS, IFRAMES, & BROADCAST
+           4. MODALS & SUPER ADMIN CSS
            ========================================================================== */
         .modal-overlay { 
             position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 300; 
@@ -166,44 +180,31 @@
         .modal-overlay.active { opacity: 1; pointer-events: all; }
         .modal-box { 
             background: var(--bg-deep); border: 1px solid var(--glass-border); 
-            border-radius: 20px; padding: 30px; width: 90%; max-width: 400px; 
-            text-align: center; box-shadow: var(--shadow-glass); position: relative; 
+            border-radius: 20px; padding: 30px; width: 90%; max-width: 450px; 
+            text-align: center; box-shadow: var(--shadow-glass); position: relative; max-height: 90vh; overflow-y: auto;
         }
         .modal-close { position: absolute; top: 15px; right: 20px; font-size: 20px; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
         .modal-close:hover { color: var(--danger); }
 
-        /* In-App Social Media Iframe Modal */
-        .iframe-modal-box {
-            background: var(--bg-deep); border: 1px solid var(--glass-border); 
-            border-radius: 20px; width: 95%; height: 90%; max-width: 1200px;
-            display: flex; flex-direction: column; overflow: hidden; position: relative;
-        }
-        .iframe-header {
-            padding: 15px 20px; background: rgba(0,0,0,0.5); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border);
-        }
-        .iframe-content { flex: 1; background: #fff; }
-        .iframe-content iframe { width: 100%; height: 100%; border: none; }
-        
-        /* Broadcast Banner */
-        #broadcast-banner {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-150%);
-            background: rgba(239, 68, 68, 0.9); color: white; padding: 15px 25px; border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4); z-index: 9999;
-            display: flex; align-items: center; gap: 15px; transition: var(--transition-smooth);
-            backdrop-filter: blur(10px); min-width: 300px; border: 1px solid rgba(255,255,255,0.2);
-        }
-        #broadcast-banner.show { transform: translateX(-50%) translateY(0); }
+        .admin-panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .admin-card { background: rgba(255,255,255,0.03); padding: 25px; border-radius: 24px; border: 1px solid var(--glass-border); margin-bottom: 20px; }
+        .admin-card h3 { font-size: 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .color-picker-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: rgba(255,255,255,0.05); padding: 10px 15px; border-radius: 12px; }
+        .color-picker-group input[type="color"] { width: 40px; height: 40px; border: none; border-radius: 8px; cursor: pointer; background: transparent; }
+
+        .list-item { background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); padding: 15px; border-radius: 12px; margin-bottom: 10px; text-align: left; display: flex; flex-direction: column; gap: 8px; }
+        .list-item-header { display: flex; justify-content: space-between; align-items: center; }
 
         /* ==========================================================================
            5. MAIN APP LAYOUT 
            ========================================================================== */
-        #app-view { display: flex; width: 100vw; height: 100vh; z-index: 10; opacity: 0; pointer-events: none; transition: var(--transition-smooth); }
+        #app-view { display: flex; width: 100vw; height: 100vh; z-index: 10; opacity: 0; pointer-events: none; transition: var(--transition-smooth); position: relative; }
         #app-view.active { opacity: 1; pointer-events: all; }
 
         .sidebar-nav { 
             width: 80px; display: flex; flex-direction: column; align-items: center; 
             padding: 25px 0; border-right: 1px solid var(--glass-border); 
-            background: rgba(5, 5, 17, 0.7); z-index: 90;
+            background: rgba(5, 5, 17, 0.7); z-index: 90; backdrop-filter: var(--blur-heavy);
         }
 
         .nav-brand { margin-bottom: 30px; }
@@ -244,8 +245,10 @@
         .contact-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .contact-msg { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+        /* Chat Area */
         .chat-area { flex: 1; display: flex; flex-direction: column; position: relative; background: transparent; height: 100%; }
         .empty-chat { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 20; background: var(--bg-deep); transition: var(--transition-smooth); }
+        .empty-icon { font-size: 60px; margin-bottom: 20px; color: var(--accent-primary); opacity: 0.5; }
         
         .chat-header { padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); background: rgba(0,0,0,0.4); backdrop-filter: var(--blur-light); }
         .chat-messages { flex: 1; overflow-y: auto; padding: 25px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; }
@@ -254,40 +257,51 @@
         @keyframes popIn { to { opacity: 1; transform: translateY(0); } }
         .msg-wrapper.received { align-self: flex-start; }
         .msg-wrapper.sent { align-self: flex-end; align-items: flex-end; }
-        
+        .msg-wrapper.system { align-self: center; align-items: center; max-width: 90%; }
+
         .msg-bubble { padding: 12px 16px; position: relative; word-wrap: break-word; font-size: 14px; line-height: 1.5; }
         .msg-wrapper.received .msg-bubble { background: var(--bg-panel); border: 1px solid var(--glass-border); border-radius: 16px 16px 16px 4px; }
         .msg-wrapper.sent .msg-bubble { background: var(--accent-primary); border-radius: 16px 16px 4px 16px; color: white; }
-        .msg-meta { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 11px; opacity: 0.7; justify-content: flex-end; }
+        .msg-wrapper.system .msg-bubble { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px; color: var(--warning); text-align: center; width: 100%; }
         
+        .msg-meta { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 11px; opacity: 0.7; justify-content: flex-end; }
+        .msg-wrapper.received .msg-meta { justify-content: space-between; width: 100%; }
+        
+        /* Input Area */
         .chat-input-container { padding: 15px 25px; background: rgba(0,0,0,0.5); border-top: 1px solid var(--glass-border); backdrop-filter: var(--blur-light); }
         .chat-input-wrapper { display: flex; align-items: flex-end; gap: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding: 8px 12px; border-radius: 20px; }
         .chat-textarea { flex: 1; min-height: 40px; max-height: 100px; background: transparent; border: none; color: white; font-size: 14px; resize: none; padding: 10px 0; outline: none; line-height: 1.4; }
-        .btn-send { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; background: var(--accent-primary); color: white; border: none; flex-shrink: 0; cursor: pointer;}
+        .btn-send { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; background: var(--accent-primary); color: white; font-size: 16px; cursor: pointer; border: none; flex-shrink: 0; }
+        .btn-send:hover { background: #4f46e5; }
 
         /* ==========================================================================
-           7. CRM, SOCIAL MEDIA & OTHER TABS
+           7. CRM, SOCIAL MEDIA, & OTHER TABS
            ========================================================================== */
         .generic-tab-content { padding: 30px; width: 100%; height: 100%; overflow-y: auto; }
-        .generic-header { font-size: 24px; font-weight: 700; margin-bottom: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; }
+        .generic-header { font-size: 24px; font-weight: 700; margin-bottom: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom: 15px; display: flex; align-items: center; gap: 12px; }
         
         .crm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-        .crm-card { background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 20px; padding: 25px; }
-        .form-grid { display: grid; gap: 15px; margin-bottom: 20px; }
-        .form-grid label { font-size: 13px; color: var(--text-muted); margin-bottom: 5px; display: block; font-weight: 600; }
+        .crm-card { background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); border-radius: 20px; padding: 25px; backdrop-filter: var(--blur-light); }
+        .crm-card h3 { color: var(--text-main); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-size: 18px; }
         
+        .form-grid { display: grid; gap: 15px; margin-bottom: 20px; }
+        .form-grid label { font-size: 13px; color: var(--text-muted); margin-bottom: 5px; display: block; font-weight: 600; text-align: left; }
+
         /* Social Media Grid */
-        .social-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
-        .social-btn-card { 
-            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 20px; 
-            padding: 30px 20px; text-align: center; cursor: pointer; transition: var(--transition-fast);
-        }
-        .social-btn-card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.1); }
-        .social-btn-card i { font-size: 40px; margin-bottom: 15px; }
-        .social-btn-card h3 { font-size: 16px; margin-bottom: 5px; }
+        .social-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .social-card { background: rgba(0, 0, 0, 0.4); border: 1px solid var(--glass-border); border-radius: 20px; padding: 25px; text-align: center; transition: var(--transition-fast); backdrop-filter: var(--blur-light); display: flex; flex-direction: column; align-items: center; justify-content: space-between;}
+        .social-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-glass); border-color: rgba(255,255,255,0.2); }
+        .social-icon { font-size: 45px; margin-bottom: 15px; }
+        .social-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+        .social-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+
+        /* File Input Custom */
+        .custom-file-upload { display: inline-block; padding: 12px 16px; cursor: pointer; background: rgba(255,255,255,0.1); border: 1px dashed var(--glass-highlight); border-radius: 12px; font-size: 13px; text-align: center; width: 100%; transition: 0.2s; }
+        .custom-file-upload:hover { background: rgba(255,255,255,0.2); }
+        input[type="file"] { display: none; }
 
         /* ==========================================================================
-           8. VIDEO CALL OVERLAY
+           8. VIDEO CALL OVERLAY (WebRTC)
            ========================================================================== */
         #call-view { 
             position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; 
@@ -302,23 +316,41 @@
         #local-video { position: absolute; bottom: 120px; right: 40px; width: 180px; height: 260px; border-radius: 20px; object-fit: cover; border: 2px solid var(--glass-highlight); box-shadow: 0 15px 35px rgba(0,0,0,0.5); z-index: 10; background: #111; transform: scaleX(-1); display: none; }
         .call-controls { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 25px; padding: 15px 40px; border-radius: 40px; background: rgba(20,20,40,0.6); backdrop-filter: var(--blur-heavy); border: 1px solid var(--glass-border); z-index: 20; }
         .call-btn { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; font-size: 22px; cursor: pointer; transition: 0.3s; background: rgba(255,255,255,0.15); display: flex; justify-content: center; align-items: center; }
-        .call-btn.end { background: var(--danger); }
-        
+        .call-btn.end { background: var(--danger); box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+
+        /* ==========================================================================
+           9. RESPONSIVE DESIGN (MOBILE)
+           ========================================================================== */
         @media (max-width: 850px) {
             body { flex-direction: column; }
-            .sidebar-nav { width: 100%; height: 70px; flex-direction: row; justify-content: space-around; padding: 0; border-right: none; border-top: 1px solid var(--glass-border); position: fixed; bottom: 0; left: 0; z-index: 999; }
+            .sidebar-nav { width: 100%; height: 70px; flex-direction: row; justify-content: space-around; padding: 0; border-right: none; border-top: 1px solid var(--glass-border); position: fixed; bottom: 0; left: 0; z-index: 999; background: rgba(5,5,17,0.95); backdrop-filter: var(--blur-heavy); }
             .nav-brand, .nav-profile { display: none; }
-            .nav-items { flex-direction: row; justify-content: space-around; height: 100%; }
+            .nav-items { flex-direction: row; justify-content: space-around; height: 100%; overflow-x: auto; padding: 0 5px; }
+            .nav-btn { width: 60px; border-radius: 0; height: 100%; background: transparent !important; }
+            .nav-btn.active { color: var(--accent-primary); box-shadow: none; }
+            .nav-btn.active::after { content: ''; position: absolute; width: 30px; height: 3px; top: 0; left: 50%; transform: translateX(-50%); background: var(--accent-primary); border-radius: 0 0 4px 4px; }
+            
             .chat-list-panel { width: 100%; height: 100%; border-right: none; padding-bottom: 70px; }
-            .chat-area { position: fixed; top: 0; left: 0; width: 100%; bottom: 70px; height: auto; z-index: 900; transform: translateX(100%); transition: transform 0.3s; background: var(--bg-solid-mobile) !important; }
+            .chat-area { position: fixed; top: 0; left: 0; width: 100%; bottom: 70px; height: auto; z-index: 900; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: var(--bg-solid-mobile) !important; }
             .chat-area.mobile-open { transform: translateX(0); }
-            .btn-mobile-back { display: block !important; margin-right: 15px; font-size: 20px; cursor: pointer; }
+            .btn-mobile-back { display: block !important; margin-right: 15px; font-size: 20px; cursor: pointer; color: var(--text-main); }
             .empty-chat { display: none !important; }
+            
             .tab-content { position: fixed; top: 0; left: 0; width: 100%; bottom: 70px; height: auto; }
+            .generic-tab-content { padding: 20px 15px; }
+            
+            #local-video { bottom: 120px; right: 20px; width: 100px; height: 150px; }
         }
     </style>
 </head>
 <body>
+
+    <div class="app-overlay"></div>
+    <div class="aurora-bg">
+        <div class="aurora-blob blob-1"></div>
+        <div class="aurora-blob blob-2"></div>
+        <div class="aurora-blob blob-3"></div>
+    </div>
 
     <!-- Splash Screen -->
     <div id="splash-screen">
@@ -327,29 +359,12 @@
         <div class="splash-loader"></div>
     </div>
 
-    <!-- Background Animasi -->
-    <div class="aurora-bg">
-        <div class="aurora-blob blob-1"></div>
-        <div class="aurora-blob blob-2"></div>
-        <div class="aurora-blob blob-3"></div>
-    </div>
-
-    <!-- Broadcast Banner -->
-    <div id="broadcast-banner">
-        <i class="fa-solid fa-bell" style="font-size: 24px;"></i>
-        <div>
-            <strong style="display: block; font-size: 15px;">Informasi Penting</strong>
-            <span id="broadcast-text" style="font-size: 13px;">Pesan sistem...</span>
-        </div>
-        <i class="fa-solid fa-xmark" style="margin-left: auto; cursor: pointer;" onclick="app.ui.closeBroadcast()"></i>
-    </div>
-
     <!-- VIEW: AUTHENTICATION -->
     <div id="auth-view" class="glass">
         <div class="auth-container glass">
             <img src="icons/icon-192.png" alt="Logo" class="auth-logo-img">
-            <h2 class="auth-title">Sistem Enterprise</h2>
-            <p class="auth-subtitle">Masuk ke Ruang Kerja Anda.</p>
+            <h2 class="auth-title">Masuk ke Akun</h2>
+            <p class="auth-subtitle">Silakan login atau daftar.</p>
 
             <div class="auth-tabs">
                 <div class="auth-tab active" id="tab-login" onclick="app.auth.switchMode('login')">Masuk</div>
@@ -377,33 +392,28 @@
         </div>
     </div>
 
-    <!-- MODAL: KLIEN BARU -->
+    <!-- MODAL: KLIEN BARU (Kontak) -->
     <div class="modal-overlay" id="contact-modal">
         <div class="modal-box">
             <i class="fa-solid fa-xmark modal-close" onclick="app.ui.closeModal('contact-modal')"></i>
-            <h3 style="margin-bottom: 10px; font-size: 20px;">Tambah Kontak</h3>
-            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Masukkan email pengguna yang terdaftar.</p>
+            <h3 style="margin-bottom: 10px; font-size: 20px;">Tambah Kontak Baru</h3>
+            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Masukkan email pengguna lain yang terdaftar.</p>
             <div class="input-group">
-                <input type="email" id="new-contact-email" class="nexus-input" placeholder="Email...">
+                <input type="email" id="new-contact-email" class="nexus-input" placeholder="Email tujuan...">
                 <i class="fa-solid fa-user-plus"></i>
             </div>
-            <button class="nexus-btn" onclick="app.chat.addNewContact()">Tambah ke Daftar</button>
+            <button class="nexus-btn" onclick="app.chat.addNewContact()">Mulai Chat</button>
         </div>
     </div>
 
-    <!-- MODAL: IN-APP BROWSER (SOCIAL MEDIA) -->
-    <div class="modal-overlay" id="iframe-modal">
-        <div class="iframe-modal-box">
-            <div class="iframe-header">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <i class="fa-solid fa-globe" style="color: var(--accent-tertiary);"></i>
-                    <span id="iframe-title" style="font-weight: 600;">Browser In-App</span>
-                </div>
-                <i class="fa-solid fa-xmark modal-close" style="position: static;" onclick="app.ui.closeModal('iframe-modal')"></i>
-            </div>
-            <div class="iframe-content">
-                <iframe id="app-iframe" src=""></iframe>
-            </div>
+    <!-- MODAL: PENGUMUMAN POP UP -->
+    <div class="modal-overlay" id="announcement-modal">
+        <div class="modal-box">
+            <i class="fa-solid fa-xmark modal-close" onclick="app.ui.closeModal('announcement-modal')"></i>
+            <div style="font-size: 40px; color: var(--warning); margin-bottom: 15px;"><i class="fa-solid fa-bullhorn"></i></div>
+            <h3 style="margin-bottom: 15px; font-size: 20px;">Informasi Penting</h3>
+            <p id="announcement-text" style="color: var(--text-main); font-size: 15px; line-height: 1.6; margin-bottom: 25px;"></p>
+            <button class="nexus-btn" onclick="app.ui.closeModal('announcement-modal')">Saya Mengerti</button>
         </div>
     </div>
 
@@ -416,7 +426,9 @@
         </div>
         <video id="local-video" autoplay muted playsinline></video>
         <div class="call-controls">
-            <button class="call-btn end" onclick="app.call.endCall()"><i class="fa-solid fa-phone-slash"></i></button>
+            <button class="call-btn end" onclick="app.call.endCall()">
+                <i class="fa-solid fa-phone-slash"></i>
+            </button>
         </div>
     </div>
 
@@ -430,10 +442,10 @@
             <div class="nav-items">
                 <div class="nav-btn active" id="tab-btn-chat" onclick="app.ui.switchTab('chat')" title="Pesan"><i class="fa-solid fa-message"></i></div>
                 <div class="nav-btn" id="tab-btn-crm" onclick="app.ui.switchTab('crm')" title="WA Enterprise" style="color: var(--accent-wa);"><i class="fa-brands fa-whatsapp"></i></div>
-                <div class="nav-btn" id="tab-btn-social" onclick="app.ui.switchTab('social')" title="Sosial Media"><i class="fa-solid fa-hashtag"></i></div>
-                <div class="nav-btn" id="tab-btn-settings" onclick="app.ui.switchTab('settings')" title="Pengaturan"><i class="fa-solid fa-user-gear"></i></div>
+                <div class="nav-btn" id="tab-btn-social" onclick="app.ui.switchTab('social')" title="Sosial Media"><i class="fa-solid fa-share-nodes"></i></div>
+                <div class="nav-btn" id="tab-btn-settings" onclick="app.ui.switchTab('settings')" title="Pengaturan"><i class="fa-solid fa-gear"></i></div>
                 
-                <!-- MENU SUPER ADMIN (Hidden by default) -->
+                <!-- MENU SUPER ADMIN -->
                 <div class="nav-btn" id="tab-btn-admin" onclick="app.ui.switchTab('admin')" style="display: none; color: var(--danger);" title="Super Admin"><i class="fa-solid fa-shield-halved"></i></div>
             </div>
             
@@ -462,9 +474,9 @@
 
                 <main class="chat-area" id="chat-area">
                     <div class="empty-chat" id="empty-state">
-                        <i class="fa-regular fa-paper-plane empty-icon"></i>
-                        <h3 style="font-size: 20px; margin-bottom: 8px;">Area Komunikasi Enterprise</h3>
-                        <p style="color: var(--text-muted); font-size: 14px;">Pilih kontak untuk memulai diskusi atau panggilan.</p>
+                        <i class="fa-solid fa-comments empty-icon"></i>
+                        <h3 style="font-size: 20px; margin-bottom: 8px;">Area Percakapan</h3>
+                        <p style="color: var(--text-muted); font-size: 14px;">Pilih atau tambah kontak untuk memulai.</p>
                     </div>
 
                     <header class="chat-header">
@@ -481,7 +493,7 @@
                         
                         <div style="display: flex; gap: 15px;">
                             <div class="action-btn" onclick="app.call.startCall('audio')" title="Panggilan Suara"><i class="fa-solid fa-phone"></i></div>
-                            <div class="action-btn" onclick="app.call.startCall('video')" title="Video Call"><i class="fa-solid fa-video"></i></div>
+                            <div class="action-btn" onclick="app.call.startCall('video')" title="Panggilan Video"><i class="fa-solid fa-video"></i></div>
                         </div>
                     </header>
 
@@ -490,140 +502,202 @@
                     <footer class="chat-input-container">
                         <div class="chat-input-wrapper">
                             <textarea id="msg-input" class="chat-textarea" placeholder="Ketik pesan..." rows="1" onkeypress="app.chat.handleEnter(event)"></textarea>
-                            <button class="btn-send" onclick="app.chat.sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                            <button class="btn-send" onclick="app.chat.sendMessage()">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
                         </div>
                     </footer>
                 </main>
             </div>
 
-            <!-- TAB 2: CRM (WA ENTERPRISE) -->
+            <!-- TAB 2: WA ENTERPRISE (CRM) -->
             <div id="tab-crm" class="tab-content">
                 <div class="generic-tab-content">
                     <h2 class="generic-header" style="color: var(--accent-wa);"><i class="fa-brands fa-whatsapp"></i> WhatsApp Enterprise</h2>
                     
-                    <!-- View: Form Pendaftaran (Jika belum aktif) -->
-                    <div id="crm-reg-view" style="display: none;">
+                    <!-- Form Pendaftaran (Jika belum disetujui) -->
+                    <div id="crm-registration-view" style="display: none;">
                         <div class="crm-card" style="max-width: 600px; margin: 0 auto;">
-                            <h3 style="text-align: center; color: var(--text-main);"><i class="fa-solid fa-file-signature"></i> Pendaftaran Akses Enterprise</h3>
-                            <p style="text-align: center; color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">Kirim pesan tagihan dan jadwal otomatis dengan akun Anda. Daftar sekarang untuk verifikasi.</p>
+                            <h3 style="text-align: center; margin-bottom: 10px;">Pendaftaran Akses Enterprise</h3>
+                            <p style="text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 25px;">Daftarkan bisnis Anda untuk mendapatkan fitur pengiriman tagihan & pesan WA otomatis. Menunggu persetujuan Super Admin.</p>
                             
                             <form onsubmit="app.crm.submitRegistration(event)">
                                 <div class="form-grid">
                                     <div>
-                                        <label>Pilih Paket Akses</label>
-                                        <select id="crm-paket" class="nexus-input" style="padding-left: 15px;" required>
-                                            <option value="12 Bulan">Paket 12 Bulan</option>
-                                            <option value="12 Minggu">Paket 12 Minggu</option>
-                                            <option value="12 Hari">Paket 12 Hari</option>
-                                        </select>
+                                        <label>Nama Bisnis / Usaha</label>
+                                        <input type="text" id="reg-biz-name" class="nexus-input" placeholder="Contoh: Toko Maju Jaya" required>
                                     </div>
                                     <div>
-                                        <label>Nomor WhatsApp Bisnis Anda</label>
-                                        <input type="text" id="crm-wa-reg" class="nexus-input" placeholder="6281xxxxxx" required style="padding-left: 15px;">
+                                        <label>Nomor HP / WhatsApp Aktif</label>
+                                        <input type="text" id="reg-biz-phone" class="nexus-input" placeholder="628..." required>
                                     </div>
                                     <div>
-                                        <label>Upload Bukti Pembayaran</label>
-                                        <input type="file" id="crm-bukti" class="nexus-input" required style="padding-left: 15px; padding-top: 10px;">
+                                        <label>Deskripsi Bisnis</label>
+                                        <textarea id="reg-biz-desc" class="nexus-textarea" placeholder="Jelaskan jenis bisnis Anda..." required></textarea>
+                                    </div>
+                                    <div>
+                                        <label>Upload Bukti Pembayaran Pendaftaran</label>
+                                        <label class="custom-file-upload">
+                                            <input type="file" id="reg-biz-proof" accept="image/*" onchange="app.utils.handleFileUpload(this, 'proof-preview')" required>
+                                            <i class="fa-solid fa-upload"></i> Pilih Foto / Screenshot
+                                        </label>
+                                        <img id="proof-preview" src="" style="width: 100%; max-height: 200px; object-fit: contain; margin-top: 10px; display: none; border-radius: 8px;">
                                     </div>
                                 </div>
-                                <button type="submit" class="nexus-btn" style="background: var(--accent-wa);">Kirim Permintaan Akses</button>
+                                <button type="submit" class="nexus-btn" style="background: var(--accent-wa);" id="btn-reg-wa">
+                                    <i class="fa-solid fa-paper-plane"></i> Ajukan Pendaftaran
+                                </button>
                             </form>
                         </div>
                     </div>
 
-                    <!-- View: Menunggu Persetujuan -->
-                    <div id="crm-pending-view" style="display: none; text-align: center; margin-top: 50px;">
-                        <i class="fa-solid fa-hourglass-half" style="font-size: 60px; color: var(--warning); margin-bottom: 20px;"></i>
-                        <h3>Menunggu Verifikasi Admin</h3>
-                        <p style="color: var(--text-muted);">Pendaftaran paket WA Enterprise Anda sedang ditinjau. Mohon tunggu.</p>
-                    </div>
-
-                    <!-- View: Aktif (Aplikasi WA Scheduler) -->
-                    <div id="crm-active-view" style="display: none;">
-                        <p style="color: var(--text-muted); margin-bottom: 25px; font-size: 14px;">Atur jadwal penagihan. Sistem akan otomatis membuat draf pesan WhatsApp di ruang obrolan saat jatuh tempo.</p>
+                    <!-- Dasbor CRM (Jika sudah disetujui) -->
+                    <div id="crm-dashboard-view" style="display: none;">
+                        <p style="color: var(--text-muted); margin-bottom: 25px; line-height: 1.5; font-size: 14px;">
+                            Sistem tagihan otomatis aktif. Atur jadwal penagihan bulanan/mingguan yang akan diteruskan ke WA.
+                        </p>
                         <div class="crm-grid">
                             <div class="crm-card">
-                                <h3><i class="fa-solid fa-calendar-plus"></i> Buat Jadwal Tagihan</h3>
+                                <h3><i class="fa-solid fa-calendar-plus"></i> Buat Jadwal Baru</h3>
                                 <form onsubmit="app.crm.saveSchedule(event)">
                                     <div class="form-grid">
-                                        <div><label>Email Klien</label><input type="email" id="crm-client-email" class="nexus-input" placeholder="klien@email.com" required></div>
-                                        <div><label>Nomor WA (Mulai dari 62)</label><input type="text" id="crm-client-wa" class="nexus-input" placeholder="628123456789" required></div>
-                                        <div><label>Nominal (Rp)</label><input type="number" id="crm-amount" class="nexus-input" placeholder="500000" required></div>
-                                        <div><label>Tanggal Jatuh Tempo (1-28)</label><input type="number" id="crm-date" class="nexus-input" min="1" max="28" required></div>
+                                        <div>
+                                            <label>Email Klien</label>
+                                            <input type="email" id="crm-client-email" class="nexus-input" placeholder="klien@email.com" required>
+                                        </div>
+                                        <div>
+                                            <label>Nomor WA Klien (Mulai dari 62)</label>
+                                            <input type="text" id="crm-client-wa" class="nexus-input" placeholder="628123456789" required>
+                                        </div>
+                                        <div>
+                                            <label>Nominal Tagihan (Rp)</label>
+                                            <input type="number" id="crm-amount" class="nexus-input" placeholder="500000" required>
+                                        </div>
+                                        <div>
+                                            <label>Siklus Tagihan</label>
+                                            <select id="crm-cycle" class="nexus-select">
+                                                <option value="bulanan">Setiap Bulan</option>
+                                                <option value="mingguan">Setiap Minggu</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label>Tanggal / Hari Jatuh Tempo</label>
+                                            <input type="number" id="crm-date" class="nexus-input" placeholder="Contoh: 1 (Tgl 1 setiap bulan)" required>
+                                        </div>
                                     </div>
-                                    <button type="submit" class="nexus-btn" style="background: var(--accent-wa);">Simpan Jadwal</button>
+                                    <button type="submit" class="nexus-btn" style="background: var(--accent-wa);">
+                                        <i class="fa-solid fa-save"></i> Simpan Jadwal
+                                    </button>
                                 </form>
                             </div>
                             <div class="crm-card">
                                 <h3><i class="fa-solid fa-list-check"></i> Jadwal Aktif</h3>
-                                <div class="schedule-list" id="crm-schedule-list"></div>
+                                <div class="schedule-list" id="crm-schedule-list" style="max-height: 400px; overflow-y: auto; padding-right: 5px;"></div>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
 
-            <!-- TAB 3: SOCIAL MEDIA (GABUNGAN) -->
+            <!-- TAB 3: SOCIAL MEDIA HUB -->
             <div id="tab-social" class="tab-content">
                 <div class="generic-tab-content">
-                    <h2 class="generic-header"><i class="fa-solid fa-hashtag"></i> Portal Sosial Media</h2>
-                    <p style="color: var(--text-muted); margin-bottom: 30px;">Kelola *Reels*, konten, dan status tanpa keluar dari aplikasi utama.</p>
+                    <h2 class="generic-header"><i class="fa-solid fa-share-nodes"></i> Hub Sosial Media</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 25px; line-height: 1.5; font-size: 14px;">
+                        Akses berbagai platform sosial media langsung dari dalam aplikasi. Platform akan dibuka sebagai pop-up melayang di atas aplikasi sehingga Anda tidak perlu membuka tab baru atau meninggalkan aplikasi.
+                    </p>
                     
                     <div class="social-grid">
-                        <div class="social-btn-card" onclick="app.ui.openInAppBrowser('https://www.facebook.com/reels', 'Facebook Reels')">
-                            <i class="fa-brands fa-facebook" style="color: var(--accent-fb);"></i>
-                            <h3>FB Reels</h3>
-                            <p style="font-size: 12px; color: var(--text-muted);">Copy status/update foto</p>
+                        <div class="social-card">
+                            <i class="fa-brands fa-facebook social-icon" style="color: var(--accent-fb);"></i>
+                            <div class="social-title">Facebook Marketplace</div>
+                            <div class="social-desc">Kelola jualan dan pesan barang.</div>
+                            <button class="nexus-btn" style="background: var(--accent-fb);" onclick="app.ui.openEnterprisePopup('https://m.facebook.com/marketplace')">
+                                Buka di Pop-up
+                            </button>
                         </div>
-                        <div class="social-btn-card" onclick="app.ui.openInAppBrowser('https://www.facebook.com/marketplace', 'Facebook Marketplace')">
-                            <i class="fa-solid fa-store" style="color: var(--accent-tertiary);"></i>
-                            <h3>Marketplace</h3>
-                            <p style="font-size: 12px; color: var(--text-muted);">Kelola Jualan</p>
+                        <div class="social-card">
+                            <i class="fa-solid fa-video social-icon" style="color: var(--accent-fb);"></i>
+                            <div class="social-title">Facebook Reels</div>
+                            <div class="social-desc">Tonton dan update konten Reels.</div>
+                            <button class="nexus-btn" style="background: var(--accent-fb);" onclick="app.ui.openEnterprisePopup('https://m.facebook.com/reels')">
+                                Buka di Pop-up
+                            </button>
                         </div>
-                        <div class="social-btn-card" onclick="app.ui.openInAppBrowser('https://www.instagram.com/', 'Instagram')">
-                            <i class="fa-brands fa-instagram" style="color: #E1306C;"></i>
-                            <h3>Instagram</h3>
-                            <p style="font-size: 12px; color: var(--text-muted);">Feed & Reels IG</p>
+                        <div class="social-card">
+                            <i class="fa-brands fa-instagram social-icon" style="color: var(--accent-ig);"></i>
+                            <div class="social-title">Instagram</div>
+                            <div class="social-desc">Akses beranda dan pesan IG.</div>
+                            <button class="nexus-btn" style="background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);" onclick="app.ui.openEnterprisePopup('https://www.instagram.com')">
+                                Buka di Pop-up
+                            </button>
                         </div>
-                        <div class="social-btn-card" onclick="app.ui.openInAppBrowser('https://twitter.com/', 'Twitter / X')">
-                            <i class="fa-brands fa-x-twitter" style="color: #fff;"></i>
-                            <h3>Twitter (X)</h3>
-                            <p style="font-size: 12px; color: var(--text-muted);">Update Status</p>
+                        <div class="social-card">
+                            <i class="fa-brands fa-tiktok social-icon" style="color: #fff;"></i>
+                            <div class="social-title">TikTok</div>
+                            <div class="social-desc">Pantau tren dan fyp terbaru.</div>
+                            <button class="nexus-btn" style="background: #222; border: 1px solid #444;" onclick="app.ui.openEnterprisePopup('https://m.tiktok.com')">
+                                Buka di Pop-up
+                            </button>
                         </div>
-                        <div class="social-btn-card" onclick="app.ui.openInAppBrowser('https://www.tiktok.com/', 'TikTok')">
-                            <i class="fa-brands fa-tiktok" style="color: #00f2fe;"></i>
-                            <h3>TikTok</h3>
-                            <p style="font-size: 12px; color: var(--text-muted);">Video Singkat</p>
+                        <div class="social-card">
+                            <i class="fa-brands fa-twitter social-icon" style="color: var(--accent-tw);"></i>
+                            <div class="social-title">Twitter / X</div>
+                            <div class="social-desc">Update status dan trending.</div>
+                            <button class="nexus-btn" style="background: var(--accent-tw);" onclick="app.ui.openEnterprisePopup('https://mobile.twitter.com')">
+                                Buka di Pop-up
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB 4: SETTINGS (EDIT PROFIL LENGKAP) -->
+            <!-- TAB 4: SETTINGS (PROFIL) -->
             <div id="tab-settings" class="tab-content">
                 <div class="generic-tab-content">
-                    <h2 class="generic-header"><i class="fa-solid fa-user-gear"></i> Pengaturan & Profil</h2>
+                    <h2 class="generic-header"><i class="fa-solid fa-user-pen"></i> Profil & Pengaturan</h2>
                     
                     <div class="crm-grid">
                         <div class="crm-card" style="text-align: center;">
-                            <img id="set-avatar-img" src="" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 3px solid var(--accent-primary);">
-                            <h3 id="set-name-text" style="justify-content: center; font-size: 20px;">Nama Pengguna</h3>
+                            <div style="position: relative; display: inline-block; margin-bottom: 15px;">
+                                <img id="set-avatar-img" src="" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent-primary);">
+                                <label for="upload-avatar" style="position: absolute; bottom: 0; right: 0; background: var(--accent-primary); width: 35px; height: 35px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; border: 2px solid var(--bg-deep);">
+                                    <i class="fa-solid fa-camera"></i>
+                                </label>
+                                <input type="file" id="upload-avatar" accept="image/*" onchange="app.auth.updateAvatar(this)" style="display: none;">
+                            </div>
+                            
+                            <h3 id="set-name-text" style="justify-content: center; font-size: 22px; margin-bottom: 5px;">Nama Pengguna</h3>
                             <p id="set-email-text" style="color: var(--text-muted); margin-bottom: 25px; font-size: 14px;">email@domain.com</p>
-                            <button class="nexus-btn" id="btn-install-pwa" style="margin-bottom: 12px; background: rgba(255,255,255,0.1);" onclick="installPWA()"><i class="fa-solid fa-download"></i> Instal App</button>
-                            <button class="nexus-btn" onclick="app.auth.logout()" style="background: var(--danger);"><i class="fa-solid fa-right-from-bracket"></i> Keluar</button>
+                            
+                            <button class="nexus-btn" id="btn-install-pwa" style="margin-bottom: 12px; background: rgba(255,255,255,0.1);" onclick="installPWA()">
+                                <i class="fa-solid fa-download"></i> Instal Aplikasi
+                            </button>
+                            <button class="nexus-btn" onclick="app.auth.logout()" style="background: var(--danger);">
+                                <i class="fa-solid fa-right-from-bracket"></i> Keluar Akun
+                            </button>
                         </div>
 
                         <div class="crm-card">
-                            <h3><i class="fa-solid fa-pen-to-square"></i> Lengkapi Biodata</h3>
-                            <form onsubmit="app.ui.saveProfile(event)">
+                            <h3><i class="fa-solid fa-address-card"></i> Edit Biodata</h3>
+                            <form onsubmit="app.auth.saveProfile(event)">
                                 <div class="form-grid">
-                                    <div><label>Upload Foto (Opsional)</label><input type="file" id="prof-foto" class="nexus-input" style="padding-left:15px; padding-top:10px;"></div>
-                                    <div><label>Nama Lengkap</label><input type="text" id="prof-nama" class="nexus-input" placeholder="Ketik nama..."></div>
-                                    <div><label>Nomor HP Aktif</label><input type="text" id="prof-hp" class="nexus-input" placeholder="08..."></div>
-                                    <div><label>Biodata / Jabatan</label><input type="text" id="prof-bio" class="nexus-input" placeholder="Misal: Praktisi / Administrasi..."></div>
+                                    <div>
+                                        <label>Nama Lengkap</label>
+                                        <input type="text" id="edit-name" class="nexus-input" required>
+                                    </div>
+                                    <div>
+                                        <label>Nomor Handphone</label>
+                                        <input type="text" id="edit-phone" class="nexus-input" placeholder="08...">
+                                    </div>
+                                    <div>
+                                        <label>Alamat / Biodata Tambahan</label>
+                                        <textarea id="edit-bio" class="nexus-textarea" placeholder="Tuliskan biodata lengkap di sini..."></textarea>
+                                    </div>
                                 </div>
-                                <button type="submit" class="nexus-btn">Simpan Profil</button>
+                                <button type="submit" class="nexus-btn" id="btn-save-profile">
+                                    <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan
+                                </button>
                             </form>
                         </div>
                     </div>
@@ -637,36 +711,51 @@
                     
                     <div class="admin-panel-grid">
                         <div class="admin-card">
-                            <h3><i class="fa-solid fa-palette"></i> Kustomisasi Tema Global</h3>
-                            <div class="form-grid">
-                                <div><label>Warna Utama (Aksen)</label><input type="color" id="adm-color-primary" value="#6366f1" style="width:100%; height:40px; cursor:pointer;"></div>
-                                <div><label>Warna Latar Belakang</label><input type="color" id="adm-color-bg" value="#050511" style="width:100%; height:40px; cursor:pointer;"></div>
-                                <div><label>URL Wallpaper (Biar Transparan)</label><input type="text" id="adm-wallpaper" class="nexus-input" placeholder="https://link-gambar.com/bg.jpg" style="padding-left:15px;"></div>
-                                <div><label>Jenis Font Aplikasi</label>
-                                    <select id="adm-font" class="nexus-input" style="padding-left:15px;">
-                                        <option value="'Plus Jakarta Sans', sans-serif">Plus Jakarta Sans</option>
-                                        <option value="'Courier New', Courier, monospace">Courier (Coding)</option>
-                                        <option value="'Times New Roman', Times, serif">Times New Roman</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <button class="nexus-btn" onclick="app.admin.broadcastTheme()" style="background: linear-gradient(135deg, var(--danger), #991b1b); margin-top: 15px;">
-                                Terapkan ke Seluruh Pengguna
+                            <h3><i class="fa-solid fa-bullhorn"></i> Kirim Pengumuman Pop-up</h3>
+                            <textarea id="adm-announcement" class="nexus-textarea" placeholder="Tulis pesan penting untuk semua user..."></textarea>
+                            <button class="nexus-btn" onclick="app.admin.sendAnnouncement()" style="margin-top: 15px; background: var(--warning); color: #000;">
+                                <i class="fa-solid fa-paper-plane"></i> Tampilkan Pop-up ke User
                             </button>
                         </div>
 
                         <div class="admin-card">
-                            <h3><i class="fa-solid fa-bullhorn"></i> Siarkan Pesan Pop-Up</h3>
-                            <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px;">Kirim pengingat *backup* atau pembaharuan ke layar semua *user*.</p>
-                            <textarea id="adm-broadcast-msg" class="nexus-input" style="padding-left: 15px; min-height: 100px; resize: none; margin-bottom: 15px;" placeholder="Tulis informasi penting di sini..."></textarea>
-                            <button class="nexus-btn" onclick="app.admin.sendBroadcast()" style="background: var(--warning); color: #000;">Kirim Broadcast Sekarang</button>
+                            <h3><i class="fa-solid fa-palette"></i> Pengaturan Tema Enterprise</h3>
+                            <div class="color-picker-group">
+                                <span>Warna Utama (Aksen)</span>
+                                <input type="color" id="adm-color-primary" value="#6366f1">
+                            </div>
+                            <div class="color-picker-group">
+                                <span>Background Warna</span>
+                                <input type="color" id="adm-color-bg" value="#050511">
+                            </div>
+                            <div class="form-grid" style="margin-top: 15px;">
+                                <div>
+                                    <label>Pilihan Font</label>
+                                    <select id="adm-font" class="nexus-select">
+                                        <option value="'Plus Jakarta Sans', sans-serif">Plus Jakarta Sans</option>
+                                        <option value="'Poppins', sans-serif">Poppins</option>
+                                        <option value="'Roboto', sans-serif">Roboto</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>URL Wallpaper (Background Image)</label>
+                                    <input type="text" id="adm-bg-url" class="nexus-input" placeholder="https://link-gambar.com/bg.jpg">
+                                </div>
+                                <div>
+                                    <label>Transparansi Background App (0.0 - 1.0)</label>
+                                    <input type="number" step="0.1" min="0" max="1" id="adm-bg-opacity" class="nexus-input" value="0.8">
+                                </div>
+                            </div>
+                            <button class="nexus-btn" onclick="app.admin.broadcastTheme()" style="background: linear-gradient(135deg, var(--danger), #991b1b); margin-top: 15px;">
+                                Terapkan ke Seluruh Aplikasi
+                            </button>
                         </div>
 
-                        <!-- Panel Persetujuan WA (Khusus Admin) -->
                         <div class="admin-card" style="grid-column: 1 / -1;">
-                            <h3><i class="fa-solid fa-check-to-slot"></i> Persetujuan WA Enterprise</h3>
-                            <div id="admin-wa-approval-list" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; margin-top: 15px;">
-                                <!-- List pendaftar masuk via JS -->
+                            <h3><i class="fa-solid fa-file-invoice-dollar"></i> Persetujuan WA Enterprise</h3>
+                            <div id="adm-wa-approvals" style="max-height: 400px; overflow-y: auto;">
+                                <!-- List pendaftaran akan muncul di sini -->
+                                <p style="color: var(--text-muted); font-size: 13px;">Belum ada antrian pendaftaran.</p>
                             </div>
                         </div>
                     </div>
@@ -678,6 +767,74 @@
 
     <!-- CORE JAVASCRIPT -->
     <script>
+        // PWA Setup
+        if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('PWA SW aktif'))
+                    .catch(err => console.error('PWA Error:', err));
+            });
+        }
+
+        let deferredInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+        });
+        function installPWA() {
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                deferredInstallPrompt.userChoice.then(() => { deferredInstallPrompt = null; });
+            } else {
+                alert('Cara Instal:\n\nAndroid (Chrome): Menu \u22EE > Instal Aplikasi / Add to Home screen.\niPhone (Safari): Share > Add to Home Screen.');
+            }
+        }
+
+        class Utils {
+            // Helper untuk mengkompresi gambar profil ke base64 ukuran kecil
+            static async compressImage(file, maxSize = 400) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.src = e.target.result;
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width;
+                            let height = img.height;
+                            
+                            if (width > height && width > maxSize) {
+                                height *= maxSize / width;
+                                width = maxSize;
+                            } else if (height > maxSize) {
+                                width *= maxSize / height;
+                                height = maxSize;
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            resolve(canvas.toDataURL('image/jpeg', 0.6));
+                        };
+                    };
+                    reader.onerror = reject;
+                });
+            }
+
+            handleFileUpload(inputElement, previewId) {
+                if(inputElement.files && inputElement.files[0]) {
+                    const file = inputElement.files[0];
+                    Utils.compressImage(file, 600).then(base64 => {
+                        const img = document.getElementById(previewId);
+                        img.src = base64;
+                        img.style.display = 'block';
+                        inputElement.setAttribute('data-base64', base64);
+                    });
+                }
+            }
+        }
+
         class DatabaseManager {
             constructor() {
                 this.dbName = 'RimediaDB';
@@ -704,9 +861,17 @@
 
             _tx(storeName, mode) { return this.db.transaction([storeName], mode).objectStore(storeName); }
 
-            saveContact(contact) { return new Promise((resolve) => { this._tx('contacts', 'readwrite').put(contact).onsuccess = () => resolve(true); }); }
-            getAllContacts() { return new Promise((resolve) => { const req = this._tx('contacts', 'readonly').getAll(); req.onsuccess = () => resolve(req.result || []); }); }
-            
+            saveContact(contact) {
+                return new Promise((resolve) => {
+                    this._tx('contacts', 'readwrite').put(contact).onsuccess = () => resolve(true);
+                });
+            }
+            getAllContacts() {
+                return new Promise((resolve) => {
+                    const req = this._tx('contacts', 'readonly').getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                });
+            }
             saveMessage(msg) {
                 return new Promise((resolve) => {
                     const participants = [msg.sender, msg.receiver].sort();
@@ -720,23 +885,57 @@
                     const participants = [emailA, emailB].sort();
                     const targetChatId = participants[0] + "_" + participants[1];
                     const req = this._tx('messages', 'readonly').index('chat_id').getAll(targetChatId);
-                    req.onsuccess = () => { let msgs = req.result || []; msgs.sort((a, b) => a.timestamp - b.timestamp); resolve(msgs); };
+                    req.onsuccess = () => {
+                        let msgs = req.result || [];
+                        msgs.sort((a, b) => a.timestamp - b.timestamp);
+                        resolve(msgs);
+                    };
                 });
             }
-            saveSchedule(schedule) { return new Promise((resolve) => { this._tx('schedules', 'readwrite').put(schedule).onsuccess = () => resolve(true); }); }
-            getAllSchedules() { return new Promise((resolve) => { const req = this._tx('schedules', 'readonly').getAll(); req.onsuccess = () => resolve(req.result || []); }); }
+            clearMessagesForChat(emailA, emailB) {
+                return new Promise(async (resolve) => {
+                    const msgs = await this.getMessages(emailA, emailB);
+                    const tx = this.db.transaction(['messages'], 'readwrite');
+                    const store = tx.objectStore('messages');
+                    msgs.forEach(m => store.delete(m.id));
+                    tx.oncomplete = () => resolve();
+                });
+            }
+            saveSchedule(schedule) {
+                return new Promise((resolve) => {
+                    this._tx('schedules', 'readwrite').put(schedule).onsuccess = () => resolve(true);
+                });
+            }
+            getAllSchedules() {
+                return new Promise((resolve) => {
+                    const req = this._tx('schedules', 'readonly').getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                });
+            }
         }
 
         class AuthManager {
-            constructor(parent) { this.parent = parent; this.mode = 'login'; this.currentUser = null; }
+            constructor(parent) { this.parent = parent; this.mode = 'login'; this.currentUser = null; this.userData = {}; }
+
             switchMode(mode) {
                 this.mode = mode;
-                document.getElementById('tab-login').classList.remove('active'); document.getElementById('tab-register').classList.remove('active');
+                document.getElementById('tab-login').classList.remove('active');
+                document.getElementById('tab-register').classList.remove('active');
                 document.getElementById(`tab-${mode}`).classList.add('active');
+                
                 const btn = document.getElementById('auth-btn-submit');
                 const nameGroup = document.getElementById('group-name');
-                if (mode === 'register') { btn.innerHTML = 'Daftar'; nameGroup.classList.remove('hidden'); document.getElementById('auth-name').required = true; } 
-                else { btn.innerHTML = 'Masuk'; nameGroup.classList.add('hidden'); document.getElementById('auth-name').required = false; }
+                document.getElementById('auth-error-msg').innerText = '';
+                
+                if (mode === 'register') {
+                    btn.innerHTML = 'Daftar';
+                    nameGroup.classList.remove('hidden');
+                    document.getElementById('auth-name').required = true;
+                } else {
+                    btn.innerHTML = 'Masuk';
+                    nameGroup.classList.add('hidden');
+                    document.getElementById('auth-name').required = false;
+                }
             }
 
             async handleSubmit(e) {
@@ -744,59 +943,125 @@
                 const email = document.getElementById('auth-email').value.trim();
                 const pass = document.getElementById('auth-password').value;
                 const name = document.getElementById('auth-name').value.trim();
+                const errorMsg = document.getElementById('auth-error-msg');
+                const btn = document.getElementById('auth-btn-submit');
                 
-                // Mode Admin Khusus
+                errorMsg.innerText = '';
+                btn.disabled = true;
+
+                // LOGIKA MANUAL LOGIN SUPER ADMIN (Bypass DB)
                 if (email.toLowerCase() === 'ahmad' && pass === 'fd') {
                     localStorage.setItem('rimedia_admin', 'true');
-                    this.processLoginSuccess({ email: 'ahmad@superadmin.com', user_metadata: { full_name: 'Ahmad Fudhali (Super Admin)' } });
+                    this.processLoginSuccess({ email: 'ahmad@superadmin.com', user_metadata: { full_name: 'Super Admin Ahmad' } });
+                    btn.disabled = false;
                     return;
                 }
 
                 try {
                     if (this.mode === 'register') {
-                        const { data, error } = await this.parent.supabase.auth.signUp({ email, password: pass, options: { data: { full_name: name } } });
+                        const { data, error } = await this.parent.supabase.auth.signUp({
+                            email: email, password: pass, 
+                            options: { data: { full_name: name, avatar_base64: '', phone: '', bio: '' } }
+                        });
                         if (error) throw error;
                         if (data.session) this.processLoginSuccess(data.user);
-                        else { alert("Daftar berhasil! Cek email untuk verifikasi."); this.switchMode('login'); }
+                        else { alert("Pendaftaran berhasil. Silakan cek email Anda untuk verifikasi."); this.switchMode('login'); }
                     } else {
-                        const { data, error } = await this.parent.supabase.auth.signInWithPassword({ email, password: pass });
+                        const { data, error } = await this.parent.supabase.auth.signInWithPassword({ email: email, password: pass });
                         if (error) throw error;
                         localStorage.removeItem('rimedia_admin');
                         this.processLoginSuccess(data.user);
                     }
-                } catch (err) { alert("Gagal: " + err.message); }
+                } catch (err) {
+                    errorMsg.innerText = "Gagal: " + err.message;
+                } finally {
+                    btn.disabled = false;
+                }
             }
 
             async checkSession() {
                 const isAdmin = localStorage.getItem('rimedia_admin');
-                if (isAdmin === 'true') { this.processLoginSuccess({ email: 'ahmad@superadmin.com', user_metadata: { full_name: 'Ahmad Fudhali (Super Admin)' } }); return; }
+                if (isAdmin === 'true') {
+                    this.processLoginSuccess({ email: 'ahmad@superadmin.com', user_metadata: { full_name: 'Super Admin Ahmad' } });
+                    return;
+                }
 
                 const { data: { session } } = await this.parent.supabase.auth.getSession();
-                if (session && session.user) { this.processLoginSuccess(session.user); } 
-                else { document.getElementById('auth-view').classList.remove('hidden'); }
+                if (session && session.user) {
+                    this.processLoginSuccess(session.user);
+                    const lastTab = localStorage.getItem('rimedia_last_tab');
+                    if (lastTab && document.getElementById('tab-' + lastTab)) this.parent.ui.switchTab(lastTab);
+                } else {
+                    document.getElementById('auth-view').classList.remove('hidden');
+                }
             }
 
             processLoginSuccess(user) {
                 this.currentUser = user;
-                const savedName = localStorage.getItem(`prof_name_${user.email}`) || user.user_metadata?.full_name || user.email.split('@')[0];
-                const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(savedName)}&background=6366f1&color=fff&size=150`;
+                this.userData = user.user_metadata || {};
+                const name = this.userData.full_name || user.email.split('@')[0];
+                const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=150`;
+                const avatar = this.userData.avatar_base64 || defaultAvatar;
 
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('app-view').classList.add('active');
+                
+                // Set UI Profil
                 document.getElementById('nav-my-avatar').src = avatar;
                 document.getElementById('set-avatar-img').src = avatar;
-                document.getElementById('set-name-text').innerText = savedName;
+                document.getElementById('set-name-text').innerText = name;
                 document.getElementById('set-email-text').innerText = user.email;
+                document.getElementById('edit-name').value = name;
+                document.getElementById('edit-phone').value = this.userData.phone || '';
+                document.getElementById('edit-bio').value = this.userData.bio || '';
 
-                if (localStorage.getItem('rimedia_admin') === 'true') { document.getElementById('tab-btn-admin').style.display = 'flex'; }
-                
+                if (localStorage.getItem('rimedia_admin') === 'true') {
+                    document.getElementById('tab-btn-admin').style.display = 'flex';
+                    this.parent.admin.fetchWAApprovals();
+                }
+
                 this.parent.chat.initChatUI();
                 this.parent.crm.initCRM();
                 this.parent.listenToRealtime();
+                this.parent.admin.fetchGlobalTheme(); // Terapkan tema global jika ada
+            }
+
+            async updateAvatar(input) {
+                if(input.files && input.files[0]) {
+                    const base64 = await Utils.compressImage(input.files[0], 300);
+                    document.getElementById('set-avatar-img').src = base64;
+                    document.getElementById('nav-my-avatar').src = base64;
+                    
+                    if (localStorage.getItem('rimedia_admin') !== 'true') {
+                        await this.parent.supabase.auth.updateUser({ data: { avatar_base64: base64 } });
+                    }
+                }
+            }
+
+            async saveProfile(e) {
+                e.preventDefault();
+                const btn = document.getElementById('btn-save-profile');
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+                
+                const name = document.getElementById('edit-name').value;
+                const phone = document.getElementById('edit-phone').value;
+                const bio = document.getElementById('edit-bio').value;
+                
+                document.getElementById('set-name-text').innerText = name;
+                
+                if (localStorage.getItem('rimedia_admin') !== 'true') {
+                    await this.parent.supabase.auth.updateUser({ data: { full_name: name, phone: phone, bio: bio } });
+                }
+                
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Tersimpan';
+                    setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan'; }, 2000);
+                }, 500);
             }
 
             async logout() {
-                localStorage.removeItem('rimedia_last_tab'); localStorage.removeItem('rimedia_admin');
+                localStorage.removeItem('rimedia_last_tab');
+                localStorage.removeItem('rimedia_admin');
                 await this.parent.supabase.auth.signOut();
                 window.location.reload();
             }
@@ -806,18 +1071,44 @@
             constructor(parent) { this.parent = parent; this.activeChatEmail = null; }
 
             async initChatUI() {
-                // Menambahkan kontak bawaan dari sistem berdasarkan referensi dokumen
-                await this.parent.db.saveContact({
-                    email: 'sekretariat.paud@sistem.id', name: 'Yunita Wulandari (Sekretaris)', last_msg: 'Siap membantu administrasi.', time: 'Sistem'
-                });
+                // Fetch riwayat chat dari Supabase agar "nyambung" otomatis ke perangkat baru
+                const myEmail = this.parent.auth.currentUser.email;
+                try {
+                    const { data } = await this.parent.supabase.from('nexus_data')
+                        .select('*')
+                        .eq('tipe_data', 'pesan');
+                        
+                    if (data && data.length > 0) {
+                        for (let row of data) {
+                            const msg = row.json_data;
+                            if (msg.pengirim === myEmail || msg.tujuan === myEmail) {
+                                const contactEmail = msg.pengirim === myEmail ? msg.tujuan : msg.pengirim;
+                                // Simpan ke kontak agar list kontak tidak kosong
+                                let contacts = await this.parent.db.getAllContacts();
+                                if (!contacts.find(c => c.email === contactEmail)) {
+                                    await this.parent.db.saveContact({ 
+                                        email: contactEmail, 
+                                        name: contactEmail.split('@')[0], 
+                                        last_msg: msg.teks, 
+                                        time: msg.waktu 
+                                    });
+                                }
+                            }
+                        }
+                    }
+                } catch (e) { console.error('Gagal memuat history chat:', e); }
+
                 this.renderContacts('');
             }
 
             async addNewContact() {
                 const email = document.getElementById('new-contact-email').value.trim();
-                if (!email) return;
+                if (!email || email === this.parent.auth.currentUser.email) return;
                 const name = email.split('@')[0];
-                await this.parent.db.saveContact({ email, name, last_msg: 'Menunggu pesan...', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) });
+                await this.parent.db.saveContact({
+                    email: email, name: name, last_msg: 'Menunggu pesan...', time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                });
+                document.getElementById('new-contact-email').value = '';
                 this.parent.ui.closeModal('contact-modal');
                 this.renderContacts('');
                 this.openChat(email, name);
@@ -827,12 +1118,17 @@
                 const container = document.getElementById('contact-list-container');
                 container.innerHTML = '';
                 let contacts = await this.parent.db.getAllContacts();
+                
                 if (searchQuery) contacts = contacts.filter(c => c.email.toLowerCase().includes(searchQuery.toLowerCase()) || c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                if (contacts.length === 0) {
+                    container.innerHTML = `<div style="text-align:center; color:var(--text-muted); font-size:13px; margin-top:20px;">Belum ada kontak. Tambahkan kontak baru.</div>`;
+                    return;
+                }
 
                 contacts.forEach(c => {
                     const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.name)}&background=1e293b&color=fff`;
                     const isActive = this.activeChatEmail === c.email ? 'active' : '';
-                    container.insertAdjacentHTML('beforeend', `
+                    const html = `
                         <div class="contact-card ${isActive}" onclick="app.chat.openChat('${c.email}', '${c.name.replace(/'/g, "\\'")}')">
                             <div class="contact-avatar"><img src="${avatar}"></div>
                             <div class="contact-info">
@@ -840,7 +1136,8 @@
                                 <div class="contact-msg">${c.last_msg}</div>
                             </div>
                         </div>
-                    `);
+                    `;
+                    container.insertAdjacentHTML('beforeend', html);
                 });
             }
 
@@ -854,27 +1151,76 @@
                 if (window.innerWidth <= 850) document.getElementById('chat-area').classList.add('mobile-open');
                 
                 this.renderContacts('');
-                await this.loadMessages();
+                await this.syncAndLoadMessages();
             }
 
-            async loadMessages() {
+            async syncAndLoadMessages() {
                 const container = document.getElementById('message-container');
-                container.innerHTML = '';
+                container.innerHTML = `<div style="text-align: center; margin: 15px 0;"><i class="fa-solid fa-spinner fa-spin" style="color:var(--text-muted);"></i> Memuat percakapan...</div>`;
+                
                 const myEmail = this.parent.auth.currentUser.email;
+                
+                // Ambil dari server secara realtime history agar "nyambung"
+                try {
+                    const { data } = await this.parent.supabase.from('nexus_data')
+                        .select('*').eq('tipe_data', 'pesan')
+                        .order('created_at', { ascending: true });
+                    
+                    if (data) {
+                        await this.parent.db.clearMessagesForChat(myEmail, this.activeChatEmail);
+                        for (let row of data) {
+                            const msg = row.json_data;
+                            if ((msg.pengirim === myEmail && msg.tujuan === this.activeChatEmail) || 
+                                (msg.pengirim === this.activeChatEmail && msg.tujuan === myEmail)) {
+                                await this.parent.db.saveMessage({ 
+                                    sender: msg.pengirim, receiver: msg.tujuan, text: msg.teks, time: msg.waktu, type: msg.tipe || 'normal' 
+                                });
+                            }
+                        }
+                    }
+                } catch(e){}
+
+                container.innerHTML = `<div style="text-align: center; margin: 15px 0;"><span style="background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 20px; font-size: 11px; color: var(--text-muted);"><i class="fa-solid fa-lock"></i> Enkripsi End-to-End Enterprise Aktif</span></div>`;
                 const msgs = await this.parent.db.getMessages(myEmail, this.activeChatEmail);
 
                 msgs.forEach(msg => {
-                    const safeText = msg.text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                    const type = msg.sender === myEmail ? 'sent' : 'received';
-                    container.insertAdjacentHTML('beforeend', `
-                        <div class="msg-wrapper ${type}">
-                            <div class="msg-bubble">
-                                <div class="msg-text">${safeText}</div>
-                                <div class="msg-meta"><span>${msg.time}</span></div>
+                    if (msg.type === 'system_draft') this.appendSystemDraftUI(msg.text, msg.waNumber, msg.time);
+                    else this.appendMessageUI(msg.sender === myEmail ? 'sent' : 'received', msg.text, msg.time);
+                });
+            }
+
+            appendMessageUI(type, text, time) {
+                const container = document.getElementById('message-container');
+                const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
+                const html = `
+                    <div class="msg-wrapper ${type}">
+                        <div class="msg-bubble">
+                            <div class="msg-text">${text}</div>
+                            <div class="msg-meta">
+                                <span>${time}</span>
+                                ${type === 'sent' ? '<i class="fa-solid fa-check-double" style="color: var(--text-main);"></i>' : ''}
                             </div>
                         </div>
-                    `);
-                });
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+                container.scrollTop = container.scrollHeight;
+            }
+
+            appendSystemDraftUI(text, waNumber, time) {
+                const container = document.getElementById('message-container');
+                const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
+                const html = `
+                    <div class="msg-wrapper system">
+                        <div class="msg-bubble">
+                            <i class="fa-solid fa-robot"></i> <b>Draf Tagihan WA Enterprise</b>
+                            <p style="margin: 10px 0; font-size: 13px; color: var(--text-main); text-align: left; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">"${text}"</p>
+                            <a href="${waLink}" target="_blank" style="margin-top: 10px; background: var(--accent-wa); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none;"><i class="fa-brands fa-whatsapp" style="font-size: 16px;"></i> Kirim via WhatsApp</a>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
                 container.scrollTop = container.scrollHeight;
             }
 
@@ -884,77 +1230,179 @@
                 const input = document.getElementById('msg-input');
                 const text = input.value.trim();
                 const myEmail = this.parent.auth.currentUser?.email;
+
                 if (!text || !this.activeChatEmail || !myEmail) return;
-                
                 const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
                 
-                const container = document.getElementById('message-container');
-                container.insertAdjacentHTML('beforeend', `<div class="msg-wrapper sent"><div class="msg-bubble"><div class="msg-text">${text}</div><div class="msg-meta"><span>${time}</span><i class="fa-solid fa-check-double" style="color:white;"></i></div></div></div>`);
-                container.scrollTop = container.scrollHeight;
+                this.appendMessageUI('sent', text, time);
                 input.value = '';
 
-                await this.parent.db.saveMessage({ sender: myEmail, receiver: this.activeChatEmail, text, time, type: 'normal' });
-                await this.parent.db.saveContact({ email: this.activeChatEmail, name: document.getElementById('active-chat-name').innerText, last_msg: text, time });
+                await this.parent.db.saveMessage({ sender: myEmail, receiver: this.activeChatEmail, text: text, time: time, type: 'normal' });
+                await this.parent.db.saveContact({ email: this.activeChatEmail, name: document.getElementById('active-chat-name').innerText, last_msg: text, time: time });
                 
                 this.renderContacts('');
-                
-                // Siarkan pesan ke Supabase agar ditangkap user tujuan
                 this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'pesan', json_data: { teks: text, pengirim: myEmail, tujuan: this.activeChatEmail, waktu: time } }]).catch(()=>{});
             }
         }
 
-        class CRMManager {
-            constructor(parent) { this.parent = parent; }
-
-            async initCRM() { 
-                this.checkStatus();
-                await this.renderSchedules(); 
+        class CallManager {
+            constructor(parent) {
+                this.parent = parent;
+                this.localStream = null;
+                this.pc = null;
+                this.currentCallType = 'video';
             }
 
-            checkStatus() {
-                const myEmail = this.parent.auth.currentUser?.email;
-                const status = localStorage.getItem(`wa_enterprise_status_${myEmail}`) || 'unregistered';
+            async startCall(type = 'video') {
+                const targetEmail = this.parent.chat.activeChatEmail;
+                if (!targetEmail) { alert("Pilih kontak dulu sebelum menelepon!"); return; }
                 
-                document.getElementById('crm-reg-view').style.display = 'none';
-                document.getElementById('crm-pending-view').style.display = 'none';
-                document.getElementById('crm-active-view').style.display = 'none';
+                this.currentCallType = type;
+                document.getElementById('call-view').classList.add('active');
+                document.getElementById('call-status-text').innerText = type === 'audio' ? 'Memanggil Suara...' : 'Memanggil Video...';
+                document.getElementById('call-icon-anim').className = type === 'audio' ? 'fa-solid fa-volume-high' : 'fa-solid fa-video';
 
-                if (localStorage.getItem('rimedia_admin') === 'true') {
-                    document.getElementById('crm-active-view').style.display = 'block'; // Admin selalu bisa akses
-                    this.renderAdminApprovalList();
-                } else if (status === 'unregistered') {
-                    document.getElementById('crm-reg-view').style.display = 'block';
-                } else if (status === 'pending') {
-                    document.getElementById('crm-pending-view').style.display = 'block';
-                } else if (status === 'approved') {
-                    document.getElementById('crm-active-view').style.display = 'block';
+                try {
+                    const mediaConstraints = { video: type === 'video', audio: true };
+                    this.localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+                    
+                    if (type === 'video') {
+                        document.getElementById('local-video').style.display = 'block';
+                        document.getElementById('local-video').srcObject = this.localStream;
+                    } else {
+                        document.getElementById('local-video').style.display = 'none';
+                    }
+                    
+                    this.pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+                    this.localStream.getTracks().forEach(track => { this.pc.addTrack(track, this.localStream); });
+
+                    this.pc.ontrack = (event) => {
+                        if (event.track.kind === 'video') {
+                            document.getElementById('remote-video').style.display = 'block';
+                            document.getElementById('remote-video').srcObject = event.streams[0];
+                            document.getElementById('call-anim').style.display = 'none';
+                        } else if (event.track.kind === 'audio' && type === 'audio') {
+                            document.getElementById('remote-video').style.display = 'none';
+                            document.getElementById('remote-video').srcObject = event.streams[0];
+                            document.getElementById('call-anim').innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+                        }
+                    };
+
+                    this.pc.onicecandidate = (e) => {
+                        if (e.candidate) {
+                            this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'webrtc', json_data: { type: 'candidate', candidate: e.candidate, pengirim: this.parent.auth.currentUser.email, tujuan: targetEmail, callType: this.currentCallType } }]);
+                        }
+                    };
+
+                    const offer = await this.pc.createOffer();
+                    await this.pc.setLocalDescription(offer);
+                    this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'webrtc', json_data: { type: 'offer', sdp: offer, pengirim: this.parent.auth.currentUser.email, tujuan: targetEmail, callType: this.currentCallType } }]);
+                } catch (err) { alert("Akses kamera/mikrofon ditolak!"); this.endCall(); }
+            }
+
+            async handleSignal(data) {
+                if (data.tujuan !== this.parent.auth.currentUser?.email) return;
+                
+                if (data.type === 'offer') {
+                    this.parent.chat.activeChatEmail = data.pengirim;
+                    this.currentCallType = data.callType || 'video';
+                    
+                    document.getElementById('call-view').classList.add('active');
+                    document.getElementById('call-status-text').innerText = this.currentCallType === 'audio' ? 'Panggilan Suara Masuk...' : 'Panggilan Video Masuk...';
+                    document.getElementById('call-icon-anim').className = this.currentCallType === 'audio' ? 'fa-solid fa-volume-high' : 'fa-solid fa-video';
+                    
+                    const mediaConstraints = { video: this.currentCallType === 'video', audio: true };
+                    this.localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+                    
+                    if (this.currentCallType === 'video') {
+                        document.getElementById('local-video').style.display = 'block';
+                        document.getElementById('local-video').srcObject = this.localStream;
+                    }
+                    
+                    this.pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+                    this.localStream.getTracks().forEach(track => { this.pc.addTrack(track, this.localStream); });
+                    
+                    this.pc.ontrack = (e) => { 
+                        if (e.track.kind === 'video') {
+                            document.getElementById('remote-video').style.display = 'block'; 
+                            document.getElementById('remote-video').srcObject = e.streams[0]; 
+                            document.getElementById('call-anim').style.display = 'none'; 
+                        } else if (e.track.kind === 'audio' && this.currentCallType === 'audio') {
+                            document.getElementById('remote-video').srcObject = e.streams[0];
+                            document.getElementById('call-anim').innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+                        }
+                    };
+                    
+                    this.pc.onicecandidate = (e) => { 
+                        if (e.candidate) this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'webrtc', json_data: { type: 'candidate', candidate: e.candidate, pengirim: this.parent.auth.currentUser.email, tujuan: data.pengirim } }]);
+                    };
+                    
+                    await this.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                    const answer = await this.pc.createAnswer();
+                    await this.pc.setLocalDescription(answer);
+                    this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'webrtc', json_data: { type: 'answer', sdp: answer, pengirim: this.parent.auth.currentUser.email, tujuan: data.pengirim } }]);
+                } 
+                else if (data.type === 'answer' && this.pc) { await this.pc.setRemoteDescription(new RTCSessionDescription(data.sdp)); } 
+                else if (data.type === 'candidate' && this.pc) { await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate)); }
+            }
+
+            endCall() {
+                if (this.localStream) this.localStream.getTracks().forEach(t => t.stop());
+                if (this.pc) this.pc.close();
+                document.getElementById('remote-video').style.display = 'none';
+                document.getElementById('local-video').style.display = 'none';
+                document.getElementById('call-anim').innerHTML = '<i class="fa-solid fa-user" id="call-icon-anim"></i>';
+                document.getElementById('call-anim').style.display = 'flex';
+                document.getElementById('call-view').classList.remove('active');
+            }
+        }
+
+        class CRMManager {
+            constructor(parent) { this.parent = parent; this.isApproved = false; }
+
+            async initCRM() { 
+                const myEmail = this.parent.auth.currentUser.email;
+                if(localStorage.getItem('rimedia_admin') === 'true') {
+                    this.isApproved = true; 
+                } else {
+                    try {
+                        const { data } = await this.parent.supabase.from('nexus_data')
+                            .select('*').eq('tipe_data', 'wa_approval')
+                            .filter('json_data->>email', 'eq', myEmail);
+                        if(data && data.length > 0) this.isApproved = true;
+                    } catch(e){}
+                }
+
+                if(this.isApproved) {
+                    document.getElementById('crm-registration-view').style.display = 'none';
+                    document.getElementById('crm-dashboard-view').style.display = 'block';
+                    await this.renderSchedules(); 
+                    await this.runAutomatedBillingCheck();
+                } else {
+                    document.getElementById('crm-registration-view').style.display = 'block';
+                    document.getElementById('crm-dashboard-view').style.display = 'none';
                 }
             }
 
-            submitRegistration(e) {
+            async submitRegistration(e) {
                 e.preventDefault();
-                const myEmail = this.parent.auth.currentUser?.email;
-                const paket = document.getElementById('crm-paket').value;
-                const wa = document.getElementById('crm-wa-reg').value;
+                const btn = document.getElementById('btn-reg-wa');
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
                 
-                // Simpan state pending ke lokal dan lempar info ke admin via Supabase
-                localStorage.setItem(`wa_enterprise_status_${myEmail}`, 'pending');
-                this.parent.supabase.from('nexus_data').insert([{ 
-                    tipe_data: 'wa_reg', json_data: { email: myEmail, paket: paket, wa: wa } 
-                }]);
-                
-                alert("Pendaftaran berhasil dikirim. Menunggu verifikasi admin.");
-                this.checkStatus();
-            }
+                const bizName = document.getElementById('reg-biz-name').value;
+                const bizPhone = document.getElementById('reg-biz-phone').value;
+                const bizDesc = document.getElementById('reg-biz-desc').value;
+                const proofInput = document.getElementById('reg-biz-proof');
+                const proofBase64 = proofInput.getAttribute('data-base64');
+                const myEmail = this.parent.auth.currentUser.email;
 
-            renderAdminApprovalList() {
-                const list = document.getElementById('admin-wa-approval-list');
-                list.innerHTML = `<p style="font-size:13px; color:var(--text-muted);">Pendaftar WA Enterprise (Simulasi via broadcast)</p>`;
-                // Untuk real aplikasi, Anda ambil data dari tabel, namun karena kita menggunakan websocket sementara:
-                list.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; margin-top:10px;">
-                    <div><strong>client@demo.com</strong><br><span style="font-size:12px;">Paket 12 Bulan</span></div>
-                    <button class="nexus-btn" style="width:auto; padding:8px 15px; background:var(--success);" onclick="alert('Diverifikasi!')">Setujui</button>
-                </div>`;
+                await this.parent.supabase.from('nexus_data').insert([{
+                    tipe_data: 'wa_registration',
+                    json_data: { email: myEmail, name: bizName, phone: bizPhone, desc: bizDesc, proof: proofBase64, date: new Date().toISOString() }
+                }]);
+
+                alert('Pendaftaran berhasil dikirim! Menunggu persetujuan Super Admin.');
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Terkirim';
             }
 
             async saveSchedule(e) {
@@ -962,10 +1410,17 @@
                 const email = document.getElementById('crm-client-email').value.trim();
                 const wa = document.getElementById('crm-client-wa').value.trim();
                 const amount = document.getElementById('crm-amount').value;
+                const cycle = document.getElementById('crm-cycle').value;
                 const date = document.getElementById('crm-date').value;
 
-                await this.parent.db.saveSchedule({ clientEmail: email, waNumber: wa, amount: parseInt(amount), billingDate: parseInt(date) });
-                alert('Jadwal tersimpan!');
+                await this.parent.db.saveSchedule({ clientEmail: email, waNumber: wa, amount: parseInt(amount), cycle: cycle, billingDate: parseInt(date), lastBilledMonth: -1 });
+                
+                let contacts = await this.parent.db.getAllContacts();
+                if (!contacts.find(c => c.email === email)) {
+                    await this.parent.db.saveContact({ email: email, name: email.split('@')[0], last_msg: 'Jadwal WA Enterprise', time: 'Sistem' });
+                    this.parent.chat.renderContacts('');
+                }
+                alert('Jadwal tagihan otomatis tersimpan!');
                 e.target.reset();
                 this.renderSchedules();
             }
@@ -974,111 +1429,162 @@
                 const container = document.getElementById('crm-schedule-list');
                 container.innerHTML = '';
                 const schedules = await this.parent.db.getAllSchedules();
+                
+                if (schedules.length === 0) { container.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">Belum ada jadwal aktif.</p>'; return; }
+
                 schedules.forEach(s => {
-                    container.insertAdjacentHTML('beforeend', `<div style="display:flex; justify-content:space-between; align-items:center; padding:15px; background:rgba(255,255,255,0.05); border-radius:12px; border:1px solid var(--glass-border); margin-bottom:10px;"><div><strong style="display:block; font-size:15px;">${s.clientEmail}</strong><span style="font-size:12px; color:var(--text-muted);">Rp ${s.amount.toLocaleString('id-ID')} | Tgl ${s.billingDate}</span></div><i class="fa-brands fa-whatsapp" style="font-size: 20px; color: var(--accent-wa);"></i></div>`);
+                    container.insertAdjacentHTML('beforeend', `<div class="list-item"><div class="list-item-header"><strong style="font-size:15px;">${s.clientEmail}</strong><i class="fa-brands fa-whatsapp" style="font-size: 20px; color: var(--accent-wa);"></i></div><span style="font-size:12px; color:var(--text-muted);">Nominal: Rp ${s.amount.toLocaleString('id-ID')} | Siklus: ${s.cycle} (Tgl ${s.billingDate})</span></div>`);
                 });
             }
-        }
 
-        class CallManager {
-            constructor(parent) { this.parent = parent; }
-            startCall(type) {
-                if (!this.parent.chat.activeChatEmail) return alert("Pilih kontak dulu!");
-                document.getElementById('call-view').classList.add('active');
-                document.getElementById('call-status-text').innerText = type === 'audio' ? 'Memanggil Suara...' : 'Memanggil Video...';
-                document.getElementById('call-icon-anim').className = type === 'audio' ? 'fa-solid fa-volume-high' : 'fa-solid fa-video';
-                
-                // Simulasi memanggil kamera
-                navigator.mediaDevices.getUserMedia({ video: type === 'video', audio: true })
-                .then(stream => { 
-                    if(type === 'video') { document.getElementById('local-video').style.display = 'block'; document.getElementById('local-video').srcObject = stream; }
-                }).catch(err => alert("Kamera/Mic tidak dizinkan."));
-            }
-            endCall() {
-                document.getElementById('call-view').classList.remove('active');
-                const vid = document.getElementById('local-video');
-                if(vid.srcObject) vid.srcObject.getTracks().forEach(t => t.stop());
+            async runAutomatedBillingCheck() {
+                const schedules = await this.parent.db.getAllSchedules();
+                const today = new Date();
+                const currentMonth = today.getMonth();
+                const myEmail = this.parent.auth.currentUser?.email;
+
+                if (!myEmail) return;
+
+                for (let s of schedules) {
+                    if (today.getDate() >= s.billingDate && s.lastBilledMonth !== currentMonth) {
+                        const timeStr = today.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                        const draftText = `[PESAN OTOMATIS ENTERPRISE] Halo kak. Mengingatkan untuk tagihan Anda bulan ini sebesar Rp ${s.amount.toLocaleString('id-ID')}. Mohon segera diproses. Terima kasih!`;
+                        
+                        await this.parent.db.saveMessage({ sender: myEmail, receiver: s.clientEmail, text: draftText, time: timeStr, type: 'system_draft', waNumber: s.waNumber });
+                        await this.parent.db.saveContact({ email: s.clientEmail, name: s.clientEmail.split('@')[0], last_msg: '[Draft Tagihan WA]', time: timeStr });
+                        
+                        s.lastBilledMonth = currentMonth;
+                        await this.parent.db.saveSchedule(s);
+                    }
+                }
+                this.parent.chat.renderContacts('');
             }
         }
 
         class AdminManager {
             constructor(parent) { this.parent = parent; }
             
+            async fetchWAApprovals() {
+                const container = document.getElementById('adm-wa-approvals');
+                try {
+                    const { data } = await this.parent.supabase.from('nexus_data')
+                        .select('*').eq('tipe_data', 'wa_registration').order('created_at', { ascending: false });
+                        
+                    container.innerHTML = '';
+                    if (!data || data.length === 0) {
+                        container.innerHTML = '<p style="color: var(--text-muted); font-size: 13px;">Tidak ada antrian pendaftaran.</p>'; return;
+                    }
+                    
+                    data.forEach(row => {
+                        const r = row.json_data;
+                        const proofImg = r.proof ? `<img src="${r.proof}" style="width:100%; max-height:150px; object-fit:contain; border-radius:8px; margin-top:10px; border:1px solid rgba(255,255,255,0.1);">` : '';
+                        container.insertAdjacentHTML('beforeend', `
+                            <div class="list-item">
+                                <div class="list-item-header"><strong>${r.name}</strong><span style="font-size:11px; background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:10px;">${r.phone}</span></div>
+                                <span style="font-size:12px; color:var(--text-muted);">${r.email} - ${r.desc}</span>
+                                ${proofImg}
+                                <button class="nexus-btn" onclick="app.admin.approveWA('${r.email}')" style="background: var(--success); margin-top: 10px; padding: 10px;"><i class="fa-solid fa-check"></i> Setujui Akses Enterprise</button>
+                            </div>
+                        `);
+                    });
+                } catch(e) {}
+            }
+
+            async approveWA(email) {
+                await this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'wa_approval', json_data: { email: email, approved_at: new Date().toISOString() } }]);
+                alert('Pendaftaran WA Enterprise disetujui untuk ' + email);
+                this.fetchWAApprovals();
+            }
+
+            async sendAnnouncement() {
+                const text = document.getElementById('adm-announcement').value;
+                if(!text) return;
+                await this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'pengumuman', json_data: { teks: text } }]);
+                document.getElementById('adm-announcement').value = '';
+                alert('Pengumuman terkirim ke seluruh user!');
+            }
+
+            async fetchGlobalTheme() {
+                try {
+                    const { data } = await this.parent.supabase.from('nexus_data')
+                        .select('*').eq('tipe_data', 'tema_admin').order('created_at', { ascending: false }).limit(1);
+                    if(data && data.length > 0) {
+                        const theme = data[0].json_data;
+                        this.applyTheme(theme.primary, theme.bg, theme.font, theme.bgUrl, theme.opacity);
+                    }
+                } catch(e){}
+            }
+
             broadcastTheme() {
                 const primary = document.getElementById('adm-color-primary').value;
                 const bg = document.getElementById('adm-color-bg').value;
-                const wp = document.getElementById('adm-wallpaper').value;
                 const font = document.getElementById('adm-font').value;
+                const bgUrl = document.getElementById('adm-bg-url').value;
+                const opacity = document.getElementById('adm-bg-opacity').value;
                 
-                this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'tema_admin', json_data: { primary, bg, wp, font } }]);
-                this.applyTheme(primary, bg, wp, font);
-                alert('Tema berhasil diubah ke seluruh user!');
+                this.applyTheme(primary, bg, font, bgUrl, opacity);
+                
+                this.parent.supabase.from('nexus_data').insert([{ 
+                    tipe_data: 'tema_admin', 
+                    json_data: { primary, bg, font, bgUrl, opacity } 
+                }]);
+                alert('Tema berhasil diubah secara global!');
             }
 
-            applyTheme(primary, bg, wp, font) {
+            applyTheme(primary, bg, font = "'Plus Jakarta Sans', sans-serif", bgUrl = "", opacity = "1") {
                 document.documentElement.style.setProperty('--accent-primary', primary);
                 document.documentElement.style.setProperty('--bg-deep', bg);
-                document.documentElement.style.setProperty('--app-font', font);
-                if(wp) document.documentElement.style.setProperty('--app-wallpaper', `url(${wp})`);
-                else document.documentElement.style.setProperty('--app-wallpaper', 'none');
-            }
-
-            sendBroadcast() {
-                const msg = document.getElementById('adm-broadcast-msg').value;
-                if(!msg) return;
-                this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'broadcast', json_data: { text: msg } }]);
-                document.getElementById('adm-broadcast-msg').value = '';
-                alert("Siaran berhasil dikirim!");
+                document.documentElement.style.setProperty('--font-family', font);
+                document.getElementById('app-font').href = `https://fonts.googleapis.com/css2?family=${font.split(',')[0].replace(/'/g, '').replace(/ /g, '+')}:wght@300;400;500;600;700;800&display=swap`;
+                
+                if (bgUrl) {
+                    document.documentElement.style.setProperty('--bg-image', `url(${bgUrl})`);
+                    document.documentElement.style.setProperty('--bg-opacity', opacity);
+                    document.documentElement.style.setProperty('--aurora-opacity', '0.2');
+                } else {
+                    document.documentElement.style.setProperty('--bg-image', 'none');
+                    document.documentElement.style.setProperty('--bg-opacity', '1');
+                    document.documentElement.style.setProperty('--aurora-opacity', '1');
+                }
             }
         }
 
         class UIManager {
             switchTab(tabName) {
+                localStorage.setItem('rimedia_last_tab', tabName);
                 document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
                 document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+                
                 document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
                 document.getElementById(`tab-${tabName}`).classList.add('active');
             }
-            
             openModal(id) { document.getElementById(id).classList.add('active'); }
             closeModal(id) { document.getElementById(id).classList.remove('active'); }
-            closeMobileChat() { document.getElementById('chat-area').classList.remove('mobile-open'); }
+            closeMobileChat() { document.getElementById('chat-area').classList.remove('mobile-open'); app.chat.activeChatEmail = null; app.chat.renderContacts(''); }
             
-            openInAppBrowser(url, title) {
-                document.getElementById('iframe-title').innerText = title;
-                document.getElementById('app-iframe').src = url;
-                this.openModal('iframe-modal');
-            }
-
-            showBroadcast(msg) {
-                const b = document.getElementById('broadcast-banner');
-                document.getElementById('broadcast-text').innerText = msg;
-                b.classList.add('show');
-                setTimeout(() => b.classList.remove('show'), 15000); // Otomatis hilang 15 dtk
-            }
-            closeBroadcast() { document.getElementById('broadcast-banner').classList.remove('show'); }
-
-            saveProfile(e) {
-                e.preventDefault();
-                const nama = document.getElementById('prof-nama').value;
-                const hp = document.getElementById('prof-hp').value;
-                const bio = document.getElementById('prof-bio').value;
-                
-                const myEmail = app.auth.currentUser?.email;
-                if(nama) {
-                    localStorage.setItem(`prof_name_${myEmail}`, nama);
-                    document.getElementById('set-name-text').innerText = nama;
-                }
-                alert("Profil berhasil diperbarui!");
+            // Pop Up Melayang (Tidak Terblokir FB) - Membuka jendela dialog murni di Desktop / Tab rapi di mobile
+            openEnterprisePopup(url) {
+                const w = Math.min(600, window.screen.width);
+                const h = Math.min(800, window.screen.height);
+                const left = (window.screen.width / 2) - (w / 2);
+                const top = (window.screen.height / 2) - (h / 2);
+                window.open(url, 'EnterprisePortal', `toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=yes, resizable=yes, copyhistory=no, width=${w}, height=${h}, top=${top}, left=${left}`);
             }
         }
 
         class MainApp {
             constructor() {
-                this.supabase = window.supabase.createClient('https://ltnyuzuesyovxybeeeox.supabase.co', 'sb_publishable_d5WYaSmQli3qOhQ8EzLvVQ_rRRxkCUU');
-                this.db = new DatabaseManager(); this.ui = new UIManager(); this.auth = new AuthManager(this); 
-                this.chat = new ChatManager(this); this.crm = new CRMManager(this);
-                this.call = new CallManager(this); this.admin = new AdminManager(this);
+                this.supabase = window.supabase.createClient('https://ltnyuzuesyovxybeeeox.supabase.co', 'sb_publishable_d5WYaSmQli3qOhQ8EzLvVQ_rRRxkCUU', {
+                    auth: { persistSession: true, autoRefreshToken: true, storageKey: 'rimedia-auth', storage: window.localStorage }
+                });
+                this.utils = new Utils();
+                this.db = new DatabaseManager(); 
+                this.ui = new UIManager(); 
+                this.auth = new AuthManager(this); 
+                this.chat = new ChatManager(this); 
+                this.crm = new CRMManager(this);
+                this.call = new CallManager(this);
+                this.admin = new AdminManager(this);
             }
             
             async start() {
@@ -1092,25 +1598,42 @@
                 this.supabase.channel('public:nexus_data').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'nexus_data' }, async payload => {
                     const data = payload.new;
                     
+                    // 1. Pesan Chat
                     if (data.tipe_data === 'pesan' && data.json_data.tujuan === this.auth.currentUser?.email) {
-                        const m = data.json_data;
+                        const msg = data.json_data;
                         let contacts = await this.db.getAllContacts();
-                        let ext = contacts.find(c => c.email === m.pengirim);
-                        await this.db.saveContact({ email: m.pengirim, name: ext ? ext.name : m.pengirim.split('@')[0], last_msg: m.teks, time: m.waktu });
-                        await this.db.saveMessage({ sender: m.pengirim, receiver: this.auth.currentUser.email, text: m.teks, time: m.waktu, type: 'normal' });
-                        if (this.chat.activeChatEmail === m.pengirim) {
-                            const ct = document.getElementById('message-container');
-                            ct.insertAdjacentHTML('beforeend', `<div class="msg-wrapper received"><div class="msg-bubble"><div class="msg-text">${m.teks}</div><div class="msg-meta"><span>${m.waktu}</span></div></div></div>`);
-                            ct.scrollTop = ct.scrollHeight;
-                        }
+                        let existing = contacts.find(c => c.email === msg.pengirim);
+                        
+                        await this.db.saveContact({ email: msg.pengirim, name: existing ? existing.name : msg.pengirim.split('@')[0], last_msg: msg.teks, time: msg.waktu });
+                        await this.db.saveMessage({ sender: msg.pengirim, receiver: this.auth.currentUser.email, text: msg.teks, time: msg.waktu, type: 'normal' });
+                        
+                        if (this.chat.activeChatEmail === msg.pengirim) this.chat.appendMessageUI('received', msg.teks, msg.waktu);
                         this.chat.renderContacts('');
-                    } 
+                    }
+                    
+                    // 2. Tema Super Admin
                     else if (data.tipe_data === 'tema_admin') {
-                        this.admin.applyTheme(data.json_data.primary, data.json_data.bg, data.json_data.wp, data.json_data.font);
+                        this.admin.applyTheme(data.json_data.primary, data.json_data.bg, data.json_data.font, data.json_data.bgUrl, data.json_data.opacity);
                     }
-                    else if (data.tipe_data === 'broadcast') {
-                        this.ui.showBroadcast(data.json_data.text);
+                    
+                    // 3. Pengumuman
+                    else if (data.tipe_data === 'pengumuman') {
+                        document.getElementById('announcement-text').innerText = data.json_data.teks;
+                        this.ui.openModal('announcement-modal');
                     }
+                    
+                    // 4. WebRTC Signal
+                    else if (data.tipe_data === 'webrtc') {
+                        this.call.handleSignal(data.json_data);
+                    }
+
+                    // 5. WA Approval (Live Update)
+                    else if (data.tipe_data === 'wa_approval' && data.json_data.email === this.auth.currentUser?.email) {
+                        this.crm.isApproved = true;
+                        this.crm.initCRM();
+                        alert("Pendaftaran WA Enterprise Anda telah disetujui Super Admin!");
+                    }
+                    
                 }).subscribe();
             }
         }
