@@ -799,8 +799,7 @@
             
         </div>
     </div>
-
-    <!-- CORE JAVASCRIPT -->
+      <!-- CORE JAVASCRIPT -->
     <script>
         // PWA Setup
         if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
@@ -826,7 +825,6 @@
         }
 
         class Utils {
-            // Helper untuk mengkompresi gambar profil ke base64 ukuran kecil
             static async compressImage(file, maxSize = 400) {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
@@ -984,7 +982,6 @@
                 errorMsg.innerText = '';
                 btn.disabled = true;
 
-                // LOGIKA MANUAL LOGIN SUPER ADMIN (Bypass DB)
                 if (email.toLowerCase() === 'ahmad' && pass === 'fd') {
                     localStorage.setItem('rimedia_admin', 'true');
                     this.processLoginSuccess({ email: 'ahmad@superadmin.com', user_metadata: { full_name: 'Super Admin Ahmad' } });
@@ -1041,7 +1038,6 @@
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('app-view').classList.add('active');
                 
-                // Set UI Profil
                 document.getElementById('nav-my-avatar').src = avatar;
                 document.getElementById('set-avatar-img').src = avatar;
                 document.getElementById('set-name-text').innerText = name;
@@ -1058,7 +1054,7 @@
                 this.parent.chat.initChatUI();
                 this.parent.crm.initCRM();
                 this.parent.listenToRealtime();
-                this.parent.admin.fetchGlobalTheme(); // Terapkan tema global jika ada
+                this.parent.admin.fetchGlobalTheme(); 
             }
 
             async updateAvatar(input) {
@@ -1106,7 +1102,6 @@
             constructor(parent) { this.parent = parent; this.activeChatEmail = null; }
 
             async initChatUI() {
-                // Fetch riwayat chat dari Supabase agar "nyambung" otomatis ke perangkat baru
                 const myEmail = this.parent.auth.currentUser.email;
                 try {
                     const { data } = await this.parent.supabase.from('nexus_data')
@@ -1114,19 +1109,20 @@
                         .eq('tipe_data', 'pesan');
                         
                     if (data && data.length > 0) {
+                        let contacts = await this.parent.db.getAllContacts();
                         for (let row of data) {
                             const msg = row.json_data;
                             if (msg.pengirim === myEmail || msg.tujuan === myEmail) {
                                 const contactEmail = msg.pengirim === myEmail ? msg.tujuan : msg.pengirim;
-                                // Simpan ke kontak agar list kontak tidak kosong
-                                let contacts = await this.parent.db.getAllContacts();
                                 if (!contacts.find(c => c.email === contactEmail)) {
+                                    const displayMsg = msg.tipe === 'audio' ? '🎵 Pesan Suara' : (msg.tipe === 'image' ? '📷 Gambar' : msg.teks);
                                     await this.parent.db.saveContact({ 
                                         email: contactEmail, 
                                         name: contactEmail.split('@')[0], 
-                                        last_msg: msg.teks, 
+                                        last_msg: displayMsg, 
                                         time: msg.waktu 
                                     });
+                                    contacts.push({ email: contactEmail });
                                 }
                             }
                         }
@@ -1135,77 +1131,87 @@
 
                 this.renderContacts('');
             }
-    // -- Geolocation & Radius 50km --
-    async updateMyLocation() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const myLat = pos.coords.latitude; const myLng = pos.coords.longitude;
-                await this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'lokasi_user', json_data: { email: this.parent.auth.currentUser.email, lat: myLat, lng: myLng } }]);
-                this.findUsersNearby(myLat, myLng, 50); // Radius 50km
-            });
-        }
-    }
 
-    async findUsersNearby(myLat, myLng, maxRadiusKm) {
-        const { data } = await this.parent.supabase.from('nexus_data').select('*').eq('tipe_data', 'lokasi_user');
-        if(data) {
-            data.forEach(row => {
-                const u = row.json_data;
-                if (u.email !== this.parent.auth.currentUser.email) {
-                    const R = 6371; const dLat = (u.lat - myLat) * Math.PI / 180; const dLng = (u.lng - myLng) * Math.PI / 180;
-                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(myLat * Math.PI / 180) * Math.cos(u.lat * Math.PI / 180) * Math.sin(dLng/2) * Math.sin(dLng/2);
-                    const distance = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-                    if (distance <= maxRadiusKm) this.parent.db.saveContact({ email: u.email, name: u.email.split('@')[0], last_msg: `(Jarak: ${distance.toFixed(1)}km)`, time: '' });
+            async updateMyLocation() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(async (pos) => {
+                        const myLat = pos.coords.latitude; const myLng = pos.coords.longitude;
+                        await this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'lokasi_user', json_data: { email: this.parent.auth.currentUser.email, lat: myLat, lng: myLng } }]);
+                        this.findUsersNearby(myLat, myLng, 50); 
+                    });
                 }
-            });
-            this.renderContacts('');
-        }
-    }
+            }
 
-    // -- Voice Note --
-    async startVoice() {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        this.mediaRecorder = new MediaRecorder(stream); this.audioChunks = [];
-        this.mediaRecorder.ondataavailable = e => this.audioChunks.push(e.data);
-        this.mediaRecorder.onstop = async () => {
-            const reader = new FileReader(); reader.readAsDataURL(new Blob(this.audioChunks, { type: 'audio/webm' }));
-            reader.onloadend = async () => this.deliverMessage(reader.result, 'audio');
-        };
-        this.mediaRecorder.start(); document.getElementById('btn-mic').style.color = 'var(--danger)';
-    }
+            async findUsersNearby(myLat, myLng, maxRadiusKm) {
+                const { data } = await this.parent.supabase.from('nexus_data').select('*').eq('tipe_data', 'lokasi_user');
+                if(data) {
+                    data.forEach(row => {
+                        const u = row.json_data;
+                        if (u.email !== this.parent.auth.currentUser.email) {
+                            const R = 6371; const dLat = (u.lat - myLat) * Math.PI / 180; const dLng = (u.lng - myLng) * Math.PI / 180;
+                            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(myLat * Math.PI / 180) * Math.cos(u.lat * Math.PI / 180) * Math.sin(dLng/2) * Math.sin(dLng/2);
+                            const distance = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+                            if (distance <= maxRadiusKm) this.parent.db.saveContact({ email: u.email, name: u.email.split('@')[0], last_msg: `(Jarak: ${distance.toFixed(1)}km)`, time: '' });
+                        }
+                    });
+                    this.renderContacts('');
+                }
+            }
 
-    stopVoice() {
-        if (this.mediaRecorder && this.mediaRecorder.state === "recording") { this.mediaRecorder.stop(); document.getElementById('btn-mic').style.color = 'var(--text-muted)'; }
-    }
+            async startVoice() {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                this.mediaRecorder = new MediaRecorder(stream); this.audioChunks = [];
+                this.mediaRecorder.ondataavailable = e => this.audioChunks.push(e.data);
+                this.mediaRecorder.onstop = async () => {
+                    const reader = new FileReader(); reader.readAsDataURL(new Blob(this.audioChunks, { type: 'audio/webm' }));
+                    reader.onloadend = async () => this.deliverMessage(reader.result, 'audio');
+                };
+                this.mediaRecorder.start(); document.getElementById('btn-mic').style.color = 'var(--danger)';
+            }
 
-    // -- Gambar --
-    async sendImage(input) {
-        if (input.files[0]) {
-            const base64 = await app.utils.constructor.compressImage(input.files[0], 800);
-            await this.deliverMessage(base64, 'image'); input.value = '';
-        }
-    }
+            stopVoice() {
+                if (this.mediaRecorder && this.mediaRecorder.state === "recording") { this.mediaRecorder.stop(); document.getElementById('btn-mic').style.color = 'var(--text-muted)'; }
+            }
 
-    // -- Teks -- (Ganti fungsi sendMessage yang lama dengan ini)
-    async sendMessageText() {
-        const input = document.getElementById('msg-input'); const text = input.value.trim();
-        if (!text || !this.activeChatEmail) return;
-        input.value = ''; await this.deliverMessage(text, 'normal');
-    }
+            async sendImage(input) {
+                if (input.files[0]) {
+                    const base64 = await app.utils.constructor.compressImage(input.files[0], 800);
+                    await this.deliverMessage(base64, 'image'); input.value = '';
+                }
+            }
 
-    async deliverMessage(content, type) {
-        const myEmail = this.parent.auth.currentUser.email; const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        const saved = await this.parent.db.saveMessage({ sender: myEmail, receiver: this.activeChatEmail, text: content, time: time, type: type });
-        this.appendMessageUI('sent', content, time, saved.id, type);
-        this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'pesan', json_data: { teks: content, tipe: type, pengirim: myEmail, tujuan: this.activeChatEmail, waktu: time } }]).catch(()=>{});
-    }
+            async sendMessageText() {
+                const input = document.getElementById('msg-input'); const text = input.value.trim();
+                if (!text || !this.activeChatEmail) return;
+                input.value = ''; await this.deliverMessage(text, 'normal');
+            }
 
-    async deleteMessage(msgId) {
-        if(confirm("Hapus pesan ini dari perangkat Anda?")) {
-            await this.parent.db.deleteMessage(msgId);
-            document.getElementById(`msg-node-${msgId}`).style.display = 'none';
-        }
-    }
+            async sendMessage() {
+                this.sendMessageText();
+            }
+
+            async deliverMessage(content, type) {
+                const myEmail = this.parent.auth.currentUser.email; 
+                const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                
+                this.appendMessageUI('sent', content, time, type);
+                
+                this.parent.supabase.from('nexus_data').insert([{ 
+                    tipe_data: 'pesan', 
+                    json_data: { teks: content, tipe: type, pengirim: myEmail, tujuan: this.activeChatEmail, waktu: time } 
+                }]).catch(()=>{});
+                
+                const displayMsg = type === 'audio' ? '🎵 Pesan Suara' : (type === 'image' ? '📷 Gambar' : content);
+                await this.parent.db.saveContact({ email: this.activeChatEmail, name: document.getElementById('active-chat-name').innerText, last_msg: displayMsg, time: time });
+                this.renderContacts('');
+            }
+
+            async deleteMessage(msgId) {
+                if(confirm("Hapus pesan ini dari perangkat Anda?")) {
+                    await this.parent.db.deleteMessage(msgId);
+                    document.getElementById(`msg-node-${msgId}`).style.display = 'none';
+                }
+            }
 
             async addNewContact() {
                 const email = document.getElementById('new-contact-email').value.trim();
@@ -1262,50 +1268,84 @@
 
             async syncAndLoadMessages() {
                 const container = document.getElementById('message-container');
-                container.innerHTML = `<div style="text-align: center; margin: 15px 0;"><i class="fa-solid fa-spinner fa-spin" style="color:var(--text-muted);"></i> Memuat percakapan...</div>`;
+                container.innerHTML = `<div style="text-align: center; margin: 15px 0;"><i class="fa-solid fa-spinner fa-spin" style="color:var(--text-muted);"></i> Memuat percakapan online...</div>`;
                 
                 const myEmail = this.parent.auth.currentUser.email;
                 
-                // Ambil dari server secara realtime history agar "nyambung"
                 try {
                     const { data } = await this.parent.supabase.from('nexus_data')
                         .select('*').eq('tipe_data', 'pesan')
                         .order('created_at', { ascending: true });
                     
+                    container.innerHTML = `<div style="text-align: center; margin: 15px 0;"><span style="background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 20px; font-size: 11px; color: var(--text-muted);"><i class="fa-solid fa-cloud"></i> Sinkronisasi Online Aktif</span></div>`;
+                    
+                    let allMessages = [];
+
                     if (data) {
-                        await this.parent.db.clearMessagesForChat(myEmail, this.activeChatEmail);
-                        for (let row of data) {
+                        data.forEach(row => {
                             const msg = row.json_data;
                             if ((msg.pengirim === myEmail && msg.tujuan === this.activeChatEmail) || 
                                 (msg.pengirim === this.activeChatEmail && msg.tujuan === myEmail)) {
-                                await this.parent.db.saveMessage({ 
-                                    sender: msg.pengirim, receiver: msg.tujuan, text: msg.teks, time: msg.waktu, type: msg.tipe || 'normal' 
+                                allMessages.push({
+                                    type: msg.tipe || 'normal',
+                                    sender: msg.pengirim,
+                                    text: msg.teks,
+                                    time: msg.waktu,
+                                    sortTime: new Date(row.created_at).getTime()
                                 });
                             }
-                        }
+                        });
                     }
-                } catch(e){}
 
-                container.innerHTML = `<div style="text-align: center; margin: 15px 0;"><span style="background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 20px; font-size: 11px; color: var(--text-muted);"><i class="fa-solid fa-lock"></i> Enkripsi End-to-End Enterprise Aktif</span></div>`;
-                const msgs = await this.parent.db.getMessages(myEmail, this.activeChatEmail);
+                    const localMsgs = await this.parent.db.getMessages(myEmail, this.activeChatEmail);
+                    localMsgs.forEach(msg => {
+                        if(msg.type === 'system_draft') {
+                            allMessages.push({
+                                type: 'system_draft',
+                                sender: msg.sender,
+                                text: msg.text,
+                                waNumber: msg.waNumber,
+                                time: msg.time,
+                                sortTime: msg.timestamp
+                            });
+                        }
+                    });
 
-                msgs.forEach(msg => {
-                    if (msg.type === 'system_draft') this.appendSystemDraftUI(msg.text, msg.waNumber, msg.time);
-                    else this.appendMessageUI(msg.sender === myEmail ? 'sent' : 'received', msg.text, msg.time);
-                });
+                    allMessages.sort((a, b) => a.sortTime - b.sortTime);
+
+                    allMessages.forEach(msg => {
+                        if (msg.type === 'system_draft') {
+                            this.appendSystemDraftUI(msg.text, msg.waNumber, msg.time);
+                        } else {
+                            this.appendMessageUI(msg.sender === myEmail ? 'sent' : 'received', msg.text, msg.time, msg.type);
+                        }
+                    });
+
+                } catch(e){
+                    console.error(e);
+                }
             }
 
-            appendMessageUI(type, text, time) {
+            appendMessageUI(alignType, text, time, msgType = 'normal') {
                 const container = document.getElementById('message-container');
-                const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                
+                let contentHTML = '';
+
+                if (msgType === 'audio') {
+                    contentHTML = `<audio controls src="${text}" style="max-width: 250px; outline: none; height: 40px; margin-top: 5px;"></audio>`;
+                } else if (msgType === 'image') {
+                    contentHTML = `<img src="${text}" style="max-width: 100%; border-radius: 8px; margin-top: 5px;">`;
+                } else {
+                    const safeText = text.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    contentHTML = `<div class="msg-text">${safeText}</div>`;
+                }
+
                 const html = `
-                    <div class="msg-wrapper ${type}">
+                    <div class="msg-wrapper ${alignType}">
                         <div class="msg-bubble">
-                            <div class="msg-text">${text}</div>
+                            ${contentHTML}
                             <div class="msg-meta">
                                 <span>${time}</span>
-                                ${type === 'sent' ? '<i class="fa-solid fa-check-double" style="color: var(--text-main);"></i>' : ''}
+                                ${alignType === 'sent' ? '<i class="fa-solid fa-check-double" style="color: var(--text-main);"></i>' : ''}
                             </div>
                         </div>
                     </div>
@@ -1331,24 +1371,6 @@
             }
 
             handleEnter(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); } }
-
-            async sendMessage() {
-                const input = document.getElementById('msg-input');
-                const text = input.value.trim();
-                const myEmail = this.parent.auth.currentUser?.email;
-
-                if (!text || !this.activeChatEmail || !myEmail) return;
-                const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                
-                this.appendMessageUI('sent', text, time);
-                input.value = '';
-
-                await this.parent.db.saveMessage({ sender: myEmail, receiver: this.activeChatEmail, text: text, time: time, type: 'normal' });
-                await this.parent.db.saveContact({ email: this.activeChatEmail, name: document.getElementById('active-chat-name').innerText, last_msg: text, time: time });
-                
-                this.renderContacts('');
-                this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'pesan', json_data: { teks: text, pengirim: myEmail, tujuan: this.activeChatEmail, waktu: time } }]).catch(()=>{});
-            }
         }
 
         class CallManager {
@@ -1595,12 +1617,12 @@
                     });
                 } catch(e) {}
             }
-    async forceUpdateAll() {
-        if (confirm("Kirim perintah untuk membersihkan cache & memaksa reload pada semua perangkat user saat ini?")) {
-            await this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'force_update', json_data: { time: new Date().getTime() } }]);
-            alert("Perintah paksa update berhasil disebarkan via online socket.");
-        }
-    }
+            async forceUpdateAll() {
+                if (confirm("Kirim perintah untuk membersihkan cache & memaksa reload pada semua perangkat user saat ini?")) {
+                    await this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'force_update', json_data: { time: new Date().getTime() } }]);
+                    alert("Perintah paksa update berhasil disebarkan via online socket.");
+                }
+            }
 
             async approveWA(email) {
                 await this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'wa_approval', json_data: { email: email, approved_at: new Date().toISOString() } }]);
@@ -1674,7 +1696,6 @@
             closeModal(id) { document.getElementById(id).classList.remove('active'); }
             closeMobileChat() { document.getElementById('chat-area').classList.remove('mobile-open'); app.chat.activeChatEmail = null; app.chat.renderContacts(''); }
             
-            // Pop Up Melayang (Tidak Terblokir FB) - Membuka jendela dialog murni di Desktop / Tab rapi di mobile
             openEnterprisePopup(url) {
                 const w = Math.min(600, window.screen.width);
                 const h = Math.min(800, window.screen.height);
@@ -1698,14 +1719,15 @@
                 this.call = new CallManager(this);
                 this.admin = new AdminManager(this);
             }
-                async clearAppCache() {
-        if (confirm("Ini akan membersihkan data nyangkut dan me-logout Anda. Lanjutkan?")) {
-            if ('caches' in window) { const cacheNames = await caches.keys(); for (let n of cacheNames) await caches.delete(n); }
-            indexedDB.deleteDatabase('RimediaDB');
-            localStorage.clear();
-            window.location.reload(true);
-        }
-    }
+            
+            async clearAppCache() {
+                if (confirm("Ini akan membersihkan data nyangkut dan me-logout Anda. Lanjutkan?")) {
+                    if ('caches' in window) { const cacheNames = await caches.keys(); for (let n of cacheNames) await caches.delete(n); }
+                    indexedDB.deleteDatabase('RimediaDB');
+                    localStorage.clear();
+                    window.location.reload(true);
+                }
+            }
 
             async start() {
                 await this.db.init();
@@ -1718,36 +1740,35 @@
                 this.supabase.channel('public:nexus_data').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'nexus_data' }, async payload => {
                     const data = payload.new;
                     
-                    // 1. Pesan Chat
                     if (data.tipe_data === 'pesan' && data.json_data.tujuan === this.auth.currentUser?.email) {
                         const msg = data.json_data;
                         let contacts = await this.db.getAllContacts();
                         let existing = contacts.find(c => c.email === msg.pengirim);
                         
-                        await this.db.saveContact({ email: msg.pengirim, name: existing ? existing.name : msg.pengirim.split('@')[0], last_msg: msg.teks, time: msg.waktu });
-                        await this.db.saveMessage({ sender: msg.pengirim, receiver: this.auth.currentUser.email, text: msg.teks, time: msg.waktu, type: 'normal' });
+                        const msgType = msg.tipe || 'normal';
+                        const displayMsg = msgType === 'audio' ? '🎵 Pesan Suara' : (msgType === 'image' ? '📷 Gambar' : msg.teks);
                         
-                        if (this.chat.activeChatEmail === msg.pengirim) this.chat.appendMessageUI('received', msg.teks, msg.waktu);
+                        await this.db.saveContact({ email: msg.pengirim, name: existing ? existing.name : msg.pengirim.split('@')[0], last_msg: displayMsg, time: msg.waktu });
+                        
+                        if (this.chat.activeChatEmail === msg.pengirim) {
+                            this.chat.appendMessageUI('received', msg.teks, msg.waktu, msgType);
+                        }
                         this.chat.renderContacts('');
                     }
                     
-                    // 2. Tema Super Admin
                     else if (data.tipe_data === 'tema_admin') {
                         this.admin.applyTheme(data.json_data.primary, data.json_data.bg, data.json_data.font, data.json_data.bgUrl, data.json_data.opacity);
                     }
                     
-                    // 3. Pengumuman
                     else if (data.tipe_data === 'pengumuman') {
                         document.getElementById('announcement-text').innerText = data.json_data.teks;
                         this.ui.openModal('announcement-modal');
                     }
                     
-                    // 4. WebRTC Signal
                     else if (data.tipe_data === 'webrtc') {
                         this.call.handleSignal(data.json_data);
                     }
 
-                    // 5. WA Approval (Live Update)
                     else if (data.tipe_data === 'wa_approval' && data.json_data.email === this.auth.currentUser?.email) {
                         this.crm.isApproved = true;
                         this.crm.initCRM();
@@ -1760,6 +1781,6 @@
 
         const app = new MainApp();
         window.addEventListener('DOMContentLoaded', () => app.start());
-    </script>
+    </script>       
 </body>
 </html>
