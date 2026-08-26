@@ -1190,40 +1190,46 @@
                 this.sendMessageText();
             }
 
-            async deliverMessage(content, type) {
-    const myEmail = this.parent.auth.currentUser.email; 
-    const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    
-    // 1. Tampilkan di UI
-    this.appendMessageUI('sent', content, time, type);
+                        async deliverMessage(content, type) {
+                const myEmail = this.parent.auth.currentUser.email; 
+                const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                
+                // Tampilkan di UI secara instan
+                this.appendMessageUI('sent', content, time, type);
+                
+                // Simpan ke database lokal HP agar tidak hilang saat di-back
+                await this.parent.db.saveMessage({
+                    sender: myEmail,
+                    receiver: this.activeChatEmail,
+                    text: content,
+                    time: time,
+                    type: type,
+                    timestamp: new Date().getTime() 
+                });
+                
+                // Update preview kontak di sebelah kiri
+                const displayMsg = type === 'audio' ? '🎵 Pesan Suara' : (type === 'image' ? '📷 Gambar' : content);
+                await this.parent.db.saveContact({ 
+                    email: this.activeChatEmail, 
+                    name: document.getElementById('active-chat-name').innerText, 
+                    last_msg: displayMsg, 
+                    time: time 
+                });
+                this.renderContacts('');
+                
+                // Kirim ke Supabase
+                const { error } = await this.parent.supabase.from('nexus_data').insert([{ 
+                    tipe_data: 'pesan', 
+                    json_data: { teks: content, tipe: type, pengirim: myEmail, tujuan: this.activeChatEmail, waktu: time } 
+                }]);
+            
+                // Muncul alert kalau Supabase menolak data
+                if (error) {
+                    console.error("Supabase Error:", error);
+                    alert(`Gagal mengirim ke server! Alasan: ${error.message}. Pastikan setting RLS Supabase sudah benar.`);
+                }
+            }
 
-    // [PERBAIKAN] 2. Simpan pesan yang kita kirim ke IndexedDB lokal kita sendiri
-    await this.parent.db.saveMessage({
-        sender: myEmail,
-        receiver: this.activeChatEmail,
-        text: content,
-        time: time,
-        type: type
-    });
-    
-    // 3. Kirim ke server Supabase (Realtime)
-    this.parent.supabase.from('nexus_data').insert([{ 
-        tipe_data: 'pesan', 
-        json_data: { teks: content, tipe: type, pengirim: myEmail, tujuan: this.activeChatEmail, waktu: time } 
-    }]).catch(()=>{});
-    
-    // 4. Update status pesan terakhir di Kontak
-    const displayMsg = type === 'audio' ? '🎵 Pesan Suara' : (type === 'image' ? '📷 Gambar' : content);
-    await this.parent.db.saveContact({ 
-        email: this.activeChatEmail, 
-        name: document.getElementById('active-chat-name').innerText, 
-        last_msg: displayMsg, 
-        time: time 
-    });
-    
-    // 5. Render ulang list kontak
-    this.renderContacts('');
-}
 
 
             async deleteMessage(msgId) {
@@ -1286,26 +1292,33 @@
                 await this.syncAndLoadMessages();
             }
 
-            async syncAndLoadMessages() {
+                        async syncAndLoadMessages() {
                 const container = document.getElementById('message-container');
                 container.innerHTML = `<div style="text-align: center; margin: 15px 0;"><i class="fa-solid fa-spinner fa-spin" style="color:var(--text-muted);"></i> Memuat percakapan online...</div>`;
                 
                 const myEmail = this.parent.auth.currentUser.email;
                 
                 try {
-                    const { data } = await this.parent.supabase.from('nexus_data')
+                    const { data, error } = await this.parent.supabase.from('nexus_data')
                         .select('*').eq('tipe_data', 'pesan')
                         .order('created_at', { ascending: true });
+                        
+                    if (error) console.error("Error dari Supabase:", error);
                     
                     container.innerHTML = `<div style="text-align: center; margin: 15px 0;"><span style="background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 20px; font-size: 11px; color: var(--text-muted);"><i class="fa-solid fa-cloud"></i> Sinkronisasi Online Aktif</span></div>`;
                     
                     let allMessages = [];
-
+                    let uniqueKeys = new Set();
+            
                     if (data) {
                         data.forEach(row => {
                             const msg = row.json_data;
                             if ((msg.pengirim === myEmail && msg.tujuan === this.activeChatEmail) || 
                                 (msg.pengirim === this.activeChatEmail && msg.tujuan === myEmail)) {
+                                
+                                const msgKey = `${msg.pengirim}_${msg.teks}_${msg.waktu}`;
+                                uniqueKeys.add(msgKey);
+            
                                 allMessages.push({
                                     type: msg.tipe || 'normal',
                                     sender: msg.pengirim,
@@ -1316,23 +1329,26 @@
                             }
                         });
                     }
-
+            
                     const localMsgs = await this.parent.db.getMessages(myEmail, this.activeChatEmail);
                     localMsgs.forEach(msg => {
-                        if(msg.type === 'system_draft') {
+                        const msgKey = `${msg.sender}_${msg.text}_${msg.time}`;
+                        
+                        if(msg.type === 'system_draft' || !uniqueKeys.has(msgKey)) {
                             allMessages.push({
-                                type: 'system_draft',
+                                type: msg.type,
                                 sender: msg.sender,
                                 text: msg.text,
                                 waNumber: msg.waNumber,
                                 time: msg.time,
-                                sortTime: msg.timestamp
+                                sortTime: msg.timestamp || new Date().getTime() 
                             });
+                            uniqueKeys.add(msgKey);
                         }
                     });
-
+            
                     allMessages.sort((a, b) => a.sortTime - b.sortTime);
-
+            
                     allMessages.forEach(msg => {
                         if (msg.type === 'system_draft') {
                             this.appendSystemDraftUI(msg.text, msg.waNumber, msg.time);
@@ -1340,11 +1356,13 @@
                             this.appendMessageUI(msg.sender === myEmail ? 'sent' : 'received', msg.text, msg.time, msg.type);
                         }
                     });
-
-                } catch(e){
-                    console.error(e);
+            
+                } catch(e) {
+                    console.error("Gagal sinkronisasi:", e);
+                    container.innerHTML += `<div style="text-align:center; color:var(--danger); font-size:12px;">Gagal menarik data dari server.</div>`;
                 }
             }
+
 
             appendMessageUI(alignType, text, time, msgType = 'normal') {
                 const container = document.getElementById('message-container');
