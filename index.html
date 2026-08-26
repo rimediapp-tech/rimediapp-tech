@@ -1191,20 +1191,40 @@
             }
 
             async deliverMessage(content, type) {
-                const myEmail = this.parent.auth.currentUser.email; 
-                const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                
-                this.appendMessageUI('sent', content, time, type);
-                
-                this.parent.supabase.from('nexus_data').insert([{ 
-                    tipe_data: 'pesan', 
-                    json_data: { teks: content, tipe: type, pengirim: myEmail, tujuan: this.activeChatEmail, waktu: time } 
-                }]).catch(()=>{});
-                
-                const displayMsg = type === 'audio' ? '🎵 Pesan Suara' : (type === 'image' ? '📷 Gambar' : content);
-                await this.parent.db.saveContact({ email: this.activeChatEmail, name: document.getElementById('active-chat-name').innerText, last_msg: displayMsg, time: time });
-                this.renderContacts('');
-            }
+    const myEmail = this.parent.auth.currentUser.email; 
+    const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    
+    // 1. Tampilkan di UI
+    this.appendMessageUI('sent', content, time, type);
+
+    // [PERBAIKAN] 2. Simpan pesan yang kita kirim ke IndexedDB lokal kita sendiri
+    await this.parent.db.saveMessage({
+        sender: myEmail,
+        receiver: this.activeChatEmail,
+        text: content,
+        time: time,
+        type: type
+    });
+    
+    // 3. Kirim ke server Supabase (Realtime)
+    this.parent.supabase.from('nexus_data').insert([{ 
+        tipe_data: 'pesan', 
+        json_data: { teks: content, tipe: type, pengirim: myEmail, tujuan: this.activeChatEmail, waktu: time } 
+    }]).catch(()=>{});
+    
+    // 4. Update status pesan terakhir di Kontak
+    const displayMsg = type === 'audio' ? '🎵 Pesan Suara' : (type === 'image' ? '📷 Gambar' : content);
+    await this.parent.db.saveContact({ 
+        email: this.activeChatEmail, 
+        name: document.getElementById('active-chat-name').innerText, 
+        last_msg: displayMsg, 
+        time: time 
+    });
+    
+    // 5. Render ulang list kontak
+    this.renderContacts('');
+}
+
 
             async deleteMessage(msgId) {
                 if(confirm("Hapus pesan ini dari perangkat Anda?")) {
@@ -1737,46 +1757,65 @@
             }
 
             listenToRealtime() {
-                this.supabase.channel('public:nexus_data').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'nexus_data' }, async payload => {
-                    const data = payload.new;
-                    
-                    if (data.tipe_data === 'pesan' && data.json_data.tujuan === this.auth.currentUser?.email) {
-                        const msg = data.json_data;
-                        let contacts = await this.db.getAllContacts();
-                        let existing = contacts.find(c => c.email === msg.pengirim);
-                        
-                        const msgType = msg.tipe || 'normal';
-                        const displayMsg = msgType === 'audio' ? '🎵 Pesan Suara' : (msgType === 'image' ? '📷 Gambar' : msg.teks);
-                        
-                        await this.db.saveContact({ email: msg.pengirim, name: existing ? existing.name : msg.pengirim.split('@')[0], last_msg: displayMsg, time: msg.waktu });
-                        
-                        if (this.chat.activeChatEmail === msg.pengirim) {
-                            this.chat.appendMessageUI('received', msg.teks, msg.waktu, msgType);
-                        }
-                        this.chat.renderContacts('');
-                    }
-                    
-                    else if (data.tipe_data === 'tema_admin') {
-                        this.admin.applyTheme(data.json_data.primary, data.json_data.bg, data.json_data.font, data.json_data.bgUrl, data.json_data.opacity);
-                    }
-                    
-                    else if (data.tipe_data === 'pengumuman') {
-                        document.getElementById('announcement-text').innerText = data.json_data.teks;
-                        this.ui.openModal('announcement-modal');
-                    }
-                    
-                    else if (data.tipe_data === 'webrtc') {
-                        this.call.handleSignal(data.json_data);
-                    }
+    this.supabase.channel('public:nexus_data').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'nexus_data' }, async payload => {
+        const data = payload.new;
+        
+        if (data.tipe_data === 'pesan' && data.json_data.tujuan === this.auth.currentUser?.email) {
+            const msg = data.json_data;
+            let contacts = await this.db.getAllContacts();
+            let existing = contacts.find(c => c.email === msg.pengirim);
+            
+            const msgType = msg.tipe || 'normal';
+            const displayMsg = msgType === 'audio' ? '🎵 Pesan Suara' : (msgType === 'image' ? '📷 Gambar' : msg.teks);
+            
+            // 1. Save/Update Kontak
+            await this.db.saveContact({ 
+                email: msg.pengirim, 
+                name: existing ? existing.name : msg.pengirim.split('@')[0], 
+                last_msg: displayMsg, 
+                time: msg.waktu 
+            });
 
-                    else if (data.tipe_data === 'wa_approval' && data.json_data.email === this.auth.currentUser?.email) {
-                        this.crm.isApproved = true;
-                        this.crm.initCRM();
-                        alert("Pendaftaran WA Enterprise Anda telah disetujui Super Admin!");
-                    }
-                    
-                }).subscribe();
+            // [PERBAIKAN] 2. Save Pesan ke IndexedDB agar tidak hilang
+            await this.db.saveMessage({
+                sender: msg.pengirim,
+                receiver: msg.tujuan,
+                text: msg.teks,
+                time: msg.waktu,
+                type: msgType
+            });
+            
+            // 3. Update UI jika sedang membuka chat dengan orang tersebut
+            if (this.chat.activeChatEmail === msg.pengirim) {
+                this.chat.appendMessageUI('received', msg.teks, msg.waktu, msgType);
             }
+            
+            // 4. Render ulang list kontak di sebelah kiri
+            this.chat.renderContacts('');
+        }
+        
+        else if (data.tipe_data === 'tema_admin') {
+            this.admin.applyTheme(data.json_data.primary, data.json_data.bg, data.json_data.font, data.json_data.bgUrl, data.json_data.opacity);
+        }
+        
+        else if (data.tipe_data === 'pengumuman') {
+            document.getElementById('announcement-text').innerText = data.json_data.teks;
+            this.ui.openModal('announcement-modal');
+        }
+        
+        else if (data.tipe_data === 'webrtc') {
+            this.call.handleSignal(data.json_data);
+        }
+
+        else if (data.tipe_data === 'wa_approval' && data.json_data.email === this.auth.currentUser?.email) {
+            this.crm.isApproved = true;
+            this.crm.initCRM();
+            alert("Pendaftaran WA Enterprise Anda telah disetujui Super Admin!");
+        }
+        
+    }).subscribe();
+}
+
         }
 
         const app = new MainApp();
