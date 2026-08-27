@@ -425,6 +425,27 @@
             <button class="nexus-btn" onclick="app.ui.closeModal('announcement-modal')">Saya Mengerti</button>
         </div>
     </div>
+    <!-- MODAL: PANGGILAN MASUK (RINGING) -->
+    <div class="modal-overlay" id="incoming-call-modal" style="z-index: 9999;">
+        <div class="modal-box" style="background: rgba(20,20,40,0.95); text-align: center; border: 1px solid var(--accent-primary);">
+            <div class="calling-animation" style="margin: 0 auto 20px; animation: radar 1s infinite;"><i class="fa-solid fa-phone-volume"></i></div>
+            <h3 id="incoming-caller-name" style="font-size: 24px; margin-bottom: 5px;">Seseorang</h3>
+            <p style="color: var(--text-muted); margin-bottom: 30px;">Memanggil Anda (<span id="incoming-call-type">Video</span>)...</p>
+            
+            <div style="display: flex; justify-content: center; gap: 30px;">
+                <!-- Tombol Tolak -->
+                <button class="call-btn end" onclick="app.call.rejectCall()" style="width: 50px; height: 50px;">
+                    <i class="fa-solid fa-phone-slash"></i>
+                </button>
+                <!-- Tombol Angkat -->
+                <button class="call-btn" onclick="app.call.acceptCall()" style="width: 50px; height: 50px; background: var(--success); box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);">
+                    <i class="fa-solid fa-phone"></i>
+                </button>
+            </div>
+            <!-- Audio Nada Dering -->
+            <audio id="ringtone" loop src="https://assets.mixkit.co/sfx/preview/mixkit-phone-ring-1354.mp3"></audio>
+        </div>
+    </div>
 
     <!-- VIEW: VIDEO CALL (WebRTC UI) -->
     <div id="call-view">
@@ -1364,7 +1385,7 @@
             }
 
 
-            appendMessageUI(alignType, text, time, msgType = 'normal') {
+                        appendMessageUI(alignType, text, time, msgType = 'normal') {
                 const container = document.getElementById('message-container');
                 let contentHTML = '';
 
@@ -1377,11 +1398,17 @@
                     contentHTML = `<div class="msg-text">${safeText}</div>`;
                 }
 
+                // Tambahkan tombol Translate HANYA UNTUK PESAN TEKS YANG DITERIMA DARI ORANG LAIN
+                const translateBtnHTML = (alignType === 'received' && msgType === 'normal') 
+                    ? `<button onclick="app.chat.translateMsg(this)" style="background:none; border:none; color:var(--accent-primary); cursor:pointer; font-size:12px; margin-right:5px;" title="Terjemahkan (Auto-Detect)"><i class="fa-solid fa-language"></i></button>`
+                    : '';
+
                 const html = `
                     <div class="msg-wrapper ${alignType}">
                         <div class="msg-bubble">
                             ${contentHTML}
                             <div class="msg-meta">
+                                ${translateBtnHTML}
                                 <span>${time}</span>
                                 ${alignType === 'sent' ? '<i class="fa-solid fa-check-double" style="color: var(--text-main);"></i>' : ''}
                             </div>
@@ -1391,6 +1418,36 @@
                 container.insertAdjacentHTML('beforeend', html);
                 container.scrollTop = container.scrollHeight;
             }
+
+            // FUNGSI UNTUK MENJALANKAN TRANSLATE (OTOMATIS MENDETEKSI BAHASA KE INDONESIA)
+            async translateMsg(btn) {
+                const bubble = btn.closest('.msg-bubble');
+                const textElem = bubble.querySelector('.msg-text');
+                const originalText = textElem.innerText;
+                
+                // Efek loading saat ditekan
+                textElem.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menerjemahkan...`;
+                btn.style.display = 'none'; 
+                
+                try {
+                    // Pakai API MyMemory gratisan
+                    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(originalText)}&langpair=Autodetect|id`);
+                    const data = await res.json();
+                    
+                    if (data && data.responseData && data.responseData.translatedText) {
+                        textElem.innerHTML = `${data.responseData.translatedText} <br><small style="color:var(--text-muted); font-size:10px;">(Teks asli: ${originalText})</small>`;
+                    } else {
+                        textElem.innerText = originalText;
+                        alert("Gagal menerjemahkan teks.");
+                        btn.style.display = 'inline-block';
+                    }
+                } catch(e) {
+                    textElem.innerText = originalText;
+                    alert("Koneksi internet terputus saat mencoba menerjemahkan.");
+                    btn.style.display = 'inline-block';
+                }
+            }
+
 
             appendSystemDraftUI(text, waNumber, time) {
                 const container = document.getElementById('message-container');
@@ -1411,12 +1468,13 @@
             handleEnter(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); } }
         }
 
-        class CallManager {
+                class CallManager {
             constructor(parent) {
                 this.parent = parent;
                 this.localStream = null;
                 this.pc = null;
                 this.currentCallType = 'video';
+                this.pendingOffer = null; // Menyimpan data panggilan yang masuk
             }
 
             async startCall(type = 'video') {
@@ -1469,50 +1527,92 @@
             async handleSignal(data) {
                 if (data.tujuan !== this.parent.auth.currentUser?.email) return;
                 
+                // JIKA ADA TELEPON MASUK (MUNCULKAN POP-UP DERING)
                 if (data.type === 'offer') {
-                    this.parent.chat.activeChatEmail = data.pengirim;
+                    this.pendingOffer = data;
                     this.currentCallType = data.callType || 'video';
                     
-                    document.getElementById('call-view').classList.add('active');
-                    document.getElementById('call-status-text').innerText = this.currentCallType === 'audio' ? 'Panggilan Suara Masuk...' : 'Panggilan Video Masuk...';
-                    document.getElementById('call-icon-anim').className = this.currentCallType === 'audio' ? 'fa-solid fa-volume-high' : 'fa-solid fa-video';
+                    document.getElementById('incoming-caller-name').innerText = data.pengirim.split('@')[0];
+                    document.getElementById('incoming-call-type').innerText = this.currentCallType === 'audio' ? 'Suara' : 'Video';
+                    this.parent.ui.openModal('incoming-call-modal'); 
                     
-                    const mediaConstraints = { video: this.currentCallType === 'video', audio: true };
-                    this.localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-                    
-                    if (this.currentCallType === 'video') {
-                        document.getElementById('local-video').style.display = 'block';
-                        document.getElementById('local-video').srcObject = this.localStream;
-                    }
-                    
-                    this.pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-                    this.localStream.getTracks().forEach(track => { this.pc.addTrack(track, this.localStream); });
-                    
-                    this.pc.ontrack = (e) => { 
-                        if (e.track.kind === 'video') {
-                            document.getElementById('remote-video').style.display = 'block'; 
-                            document.getElementById('remote-video').srcObject = e.streams[0]; 
-                            document.getElementById('call-anim').style.display = 'none'; 
-                        } else if (e.track.kind === 'audio' && this.currentCallType === 'audio') {
-                            document.getElementById('remote-video').srcObject = e.streams[0];
-                            document.getElementById('call-anim').innerHTML = '<i class="fa-solid fa-volume-high"></i>';
-                        }
-                    };
-                    
-                    this.pc.onicecandidate = (e) => { 
-                        if (e.candidate) this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'webrtc', json_data: { type: 'candidate', candidate: e.candidate, pengirim: this.parent.auth.currentUser.email, tujuan: data.pengirim } }]);
-                    };
-                    
-                    await this.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                    const answer = await this.pc.createAnswer();
-                    await this.pc.setLocalDescription(answer);
-                    this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'webrtc', json_data: { type: 'answer', sdp: answer, pengirim: this.parent.auth.currentUser.email, tujuan: data.pengirim } }]);
+                    const ringtone = document.getElementById('ringtone');
+                    ringtone.play().catch(()=>{}); 
                 } 
-                else if (data.type === 'answer' && this.pc) { await this.pc.setRemoteDescription(new RTCSessionDescription(data.sdp)); } 
-                else if (data.type === 'candidate' && this.pc) { await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate)); }
+                // JIKA PANGGILAN DITOLAK
+                else if (data.type === 'reject') {
+                    alert("Panggilan Anda ditolak / sedang sibuk.");
+                    this.endCall();
+                }
+                else if (data.type === 'answer' && this.pc) { 
+                    await this.pc.setRemoteDescription(new RTCSessionDescription(data.sdp)); 
+                } 
+                else if (data.type === 'candidate' && this.pc) { 
+                    await this.pc.addIceCandidate(new RTCIceCandidate(data.candidate)); 
+                }
             }
 
-                        endCall() {
+            // FUNGSI ANGKAT TELEPON
+            async acceptCall() {
+                const ringtone = document.getElementById('ringtone');
+                ringtone.pause(); ringtone.currentTime = 0;
+                this.parent.ui.closeModal('incoming-call-modal');
+                
+                const data = this.pendingOffer;
+                this.parent.chat.activeChatEmail = data.pengirim;
+                
+                document.getElementById('call-view').classList.add('active');
+                document.getElementById('call-status-text').innerText = 'Tersambung...';
+                
+                const mediaConstraints = { video: this.currentCallType === 'video', audio: true };
+                this.localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+                
+                if (this.currentCallType === 'video') {
+                    document.getElementById('local-video').style.display = 'block';
+                    document.getElementById('local-video').srcObject = this.localStream;
+                }
+                
+                this.pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+                this.localStream.getTracks().forEach(track => { this.pc.addTrack(track, this.localStream); });
+                
+                this.pc.ontrack = (e) => { 
+                    if (e.track.kind === 'video') {
+                        document.getElementById('remote-video').style.display = 'block'; 
+                        document.getElementById('remote-video').srcObject = e.streams[0]; 
+                        document.getElementById('call-anim').style.display = 'none'; 
+                    } else if (e.track.kind === 'audio' && this.currentCallType === 'audio') {
+                        document.getElementById('remote-video').srcObject = e.streams[0];
+                        document.getElementById('call-anim').innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+                    }
+                };
+                
+                this.pc.onicecandidate = (e) => { 
+                    if (e.candidate) this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'webrtc', json_data: { type: 'candidate', candidate: e.candidate, pengirim: this.parent.auth.currentUser.email, tujuan: data.pengirim } }]);
+                };
+                
+                await this.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+                const answer = await this.pc.createAnswer();
+                await this.pc.setLocalDescription(answer);
+                this.parent.supabase.from('nexus_data').insert([{ tipe_data: 'webrtc', json_data: { type: 'answer', sdp: answer, pengirim: this.parent.auth.currentUser.email, tujuan: data.pengirim } }]);
+                
+                this.pendingOffer = null;
+            }
+
+            // FUNGSI TOLAK TELEPON
+            rejectCall() {
+                const ringtone = document.getElementById('ringtone');
+                ringtone.pause(); ringtone.currentTime = 0;
+                this.parent.ui.closeModal('incoming-call-modal');
+                
+                this.parent.supabase.from('nexus_data').insert([{ 
+                    tipe_data: 'webrtc', 
+                    json_data: { type: 'reject', pengirim: this.parent.auth.currentUser.email, tujuan: this.pendingOffer.pengirim } 
+                }]);
+                
+                this.pendingOffer = null;
+            }
+
+            endCall() {
                 if (this.localStream) this.localStream.getTracks().forEach(t => t.stop());
                 if (this.pc) this.pc.close();
                 document.getElementById('remote-video').style.display = 'none';
@@ -1521,16 +1621,13 @@
                 document.getElementById('call-anim').style.display = 'flex';
                 document.getElementById('call-view').classList.remove('active');
 
-                // FITUR LOG BEKAS PANGGILAN
                 if (this.parent.chat.activeChatEmail) {
                     const callText = this.currentCallType === 'video' ? '📹 Panggilan Video Berakhir' : '📞 Panggilan Suara Berakhir';
-                    
-                    // Mengirimkan log panggilan masuk ke dalam riwayat chat
                     this.parent.chat.deliverMessage(callText, 'normal');
                 }
             }
-
         }
+
 
         class CRMManager {
             constructor(parent) { this.parent = parent; this.isApproved = false; }
