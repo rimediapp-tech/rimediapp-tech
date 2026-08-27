@@ -1507,7 +1507,7 @@
                         tipe_data: 'webrtc', 
                         json_data: { type: 'offer', channel: this.channelName, pengirim: this.parent.auth.currentUser.email, tujuan: targetEmail, callType: this.currentCallType } 
                     }]);
-                } catch (err) { alert("Gagal mengakses kamera/mic atau gagal nyambung ke Server!"); this.endCall(); }
+                } catch (err) { alert("ERROR ASLI: " + err.message); this.endCall(); }
             }
 
             async handleSignal(data) {
